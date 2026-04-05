@@ -12,3 +12,23 @@
  ✓ Compiled / in 13.5s (778 modules)
  GET / 200 in 15900ms
  ✓ Compiled in 2.8s (335 modules)
+ GET / 200 in 622ms
+ GET / 200 in 146ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 630ms (460 modules)
+ GET /favicon.ico 200 in 956ms
+ GET / 200 in 687ms
+ GET /favicon.ico 200 in 63ms
+ ○ Compiling /api/run ...
+ ✓ Compiled /api/run in 13.9s (1030 modules)
+ POST /api/run 200 in 16526ms
+ GET /?state=eyJpIjoibmFtZSx2YWx1ZSx0aHJlc2hvbGRcbmFscGhhLDEyLDEwXG5iZXRhLDgsMTBcbmdhbW1hLDE5LDE1XG5kZWx0YSw3LDZcbmVwc2lsb24sNSw5XG4iLCJjIjoiY2F0IiwiZmkiOiJjc3YiLCJmbyI6ImNzdiJ9 200 in 16660ms
+ GET /favicon.ico 200 in 214ms
+ GET / 200 in 449ms
+ GET /favicon.ico 200 in 24ms
+ POST /api/run 200 in 126ms
+ GET /?state=eyJpIjoibmFtZSx2YWx1ZSx0aHJlc2hvbGRcbmFscGhhLDEyLDEwXG5iZXRhLDgsMTBcbmdhbW1hLDE5LDE1XG5kZWx0YSw3LDZcbmVwc2lsb24sNSw5XG4iLCJjIjoiY2F0IiwiZmkiOiJjc3YiLCJmbyI6ImNzdiJ9 200 in 137ms
+ GET /favicon.ico 200 in 27ms
+ GET / 200 in 199ms
+ GET /favicon.ico 200 in 39ms
+ POST /api/run 200 in 134ms

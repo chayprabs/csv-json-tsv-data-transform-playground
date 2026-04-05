@@ -4,6 +4,7 @@ import {
   runResponseSchema,
   type RunResponse,
 } from "@/lib/apiContract";
+import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import type { DataFormatId } from "@/lib/formats";
 
 export interface RunTransformRequest {
@@ -80,7 +81,7 @@ export async function runTransform(
         output: "",
         error: response.ok
           ? null
-          : `Request failed with status ${response.status}.`,
+          : sanitizeErrorMessage(`Request failed with status ${response.status}.`),
         code: response.ok
           ? RUN_RESPONSE_CODES.ok
           : RUN_RESPONSE_CODES.unexpected,
@@ -95,7 +96,9 @@ export async function runTransform(
     } catch {
       return {
         output: "",
-        error: responseText.trim() || `Request failed with status ${response.status}.`,
+        error: sanitizeErrorMessage(
+          responseText.trim() || `Request failed with status ${response.status}.`,
+        ),
         code: RUN_RESPONSE_CODES.unexpected,
         status: response.status,
       };
@@ -106,7 +109,9 @@ export async function runTransform(
     if (!parsedResponse.success) {
       return {
         output: "",
-        error: responseText.trim() || `Request failed with status ${response.status}.`,
+        error: sanitizeErrorMessage(
+          responseText.trim() || `Request failed with status ${response.status}.`,
+        ),
         code: RUN_RESPONSE_CODES.unexpected,
         status: response.status,
       };
@@ -114,8 +119,23 @@ export async function runTransform(
 
     return {
       ...parsedResponse.data,
+      error: parsedResponse.data.error
+        ? sanitizeErrorMessage(parsedResponse.data.error)
+        : null,
       status: response.status,
     };
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw error;
+    }
+
+    if (timedAbort.signal.aborted) {
+      throw new Error("The request timed out.");
+    }
+
+    throw new Error(
+      sanitizeErrorMessage(error, "Unexpected request failure."),
+    );
   } finally {
     timedAbort.dispose();
   }

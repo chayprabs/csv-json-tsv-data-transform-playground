@@ -21,8 +21,6 @@ export type CopyStatus = "idle" | "copied" | "failed";
 interface ExecutionState {
   status: ExecutionStatus;
   output: string;
-  outputPreview: string;
-  isOutputPreviewTruncated: boolean;
   errorMessage: string | null;
   runSummary: RunSummary | null;
 }
@@ -62,8 +60,6 @@ type StudioAction =
       type: "runSuccess";
       payload: {
         output: string;
-        outputPreview: string;
-        isOutputPreviewTruncated: boolean;
         runSummary: RunSummary;
       };
     }
@@ -83,8 +79,6 @@ function createIdleExecutionState(): ExecutionState {
   return {
     status: "idle",
     output: "",
-    outputPreview: "",
-    isOutputPreviewTruncated: false,
     errorMessage: null,
     runSummary: null,
   };
@@ -314,13 +308,14 @@ export function studioReducer(
         execution: {
           status: "success",
           output: action.payload.output,
-          outputPreview: action.payload.outputPreview,
-          isOutputPreviewTruncated: action.payload.isOutputPreviewTruncated,
           errorMessage: null,
           runSummary: action.payload.runSummary,
         },
         copyStatus: "idle",
-        statusMessage: `Completed in ${action.payload.runSummary.durationMs}ms.`,
+        statusMessage:
+          action.payload.runSummary.outputRows === 0
+            ? "Transformation returned 0 rows."
+            : `Completed in ${action.payload.runSummary.durationMs}ms.`,
       };
 
     case "runFailure":

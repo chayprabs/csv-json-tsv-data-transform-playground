@@ -5,6 +5,7 @@ import {
   isDataFormatId,
   type DataFormatId,
 } from "@/lib/formats";
+import { getInputSizeInBytes } from "@/lib/validation";
 
 interface InputPanelProps {
   input: string;
@@ -23,6 +24,8 @@ export const InputPanel = memo(function InputPanel({
   onInputFormatChange,
   onLoadExample,
 }: InputPanelProps) {
+  const inputSizeInBytes = getInputSizeInBytes(input);
+
   return (
     <section className="panel-surface rounded-3xl p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -30,6 +33,13 @@ export const InputPanel = memo(function InputPanel({
           <h2 className="text-lg font-semibold">Input</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             Paste raw data in one of the supported text formats.
+          </p>
+          <p
+            className="mt-2 text-sm text-[color:var(--muted)]"
+            id="input-stats"
+          >
+            {input.length.toLocaleString()} characters ·{" "}
+            {inputSizeInBytes.toLocaleString()} bytes
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -81,7 +91,7 @@ export const InputPanel = memo(function InputPanel({
         onChange={(event) => onInputChange(event.target.value)}
         placeholder="Paste CSV, TSV, JSON, NDJSON, or DKVP data here..."
         disabled={disabled}
-        aria-describedby="input-help"
+        aria-describedby="input-help input-stats"
       />
       <p className="mt-2 text-sm text-[color:var(--muted)]" id="input-help">
         Paste CSV, TSV, JSON, NDJSON, or DKVP data here.

@@ -7,17 +7,18 @@ import {
   useMemo,
   useReducer,
   useRef,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 
 import { CommandBar } from "@/components/CommandBar";
 import { InputPanel } from "@/components/InputPanel";
 import { OutputPanel } from "@/components/OutputPanel";
+import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getFormatById } from "@/lib/formats";
 import { getClientSessionId } from "@/lib/clientSession";
 import { EXAMPLE_PRESETS } from "@/lib/presets";
-import { createOutputPreview, countRowsForFormat } from "@/lib/runMetrics";
+import { countRowsForFormat } from "@/lib/runMetrics";
 import { runTransform } from "@/lib/runTransform";
 import {
   buildSharedStateUrl,
@@ -114,6 +115,8 @@ export function GridcraftStudio({
       activeRequestControllerRef.current?.abort();
     };
   }, []);
+
+  const isRunning = state.execution.status === "running";
 
   const selectedPreset = useMemo(
     () =>
@@ -260,15 +263,12 @@ export function GridcraftStudio({
         return;
       }
 
-      const previewResult = createOutputPreview(result.output);
       const durationMs = Math.round(performance.now() - startedAt);
 
       dispatch({
         type: "runSuccess",
         payload: {
           output: result.output,
-          outputPreview: previewResult.preview,
-          isOutputPreviewTruncated: previewResult.isTruncated,
           runSummary: {
             inputRows: countRowsForFormat(state.input, state.inputFormat),
             outputRows: countRowsForFormat(result.output, state.outputFormat),
@@ -284,10 +284,10 @@ export function GridcraftStudio({
       dispatch({
         type: "runFailure",
         payload: {
-          errorMessage:
-            error instanceof Error
-              ? error.message
-              : "Unexpected error while running the transformation.",
+          errorMessage: sanitizeErrorMessage(
+            error,
+            "Unexpected error while running the transformation.",
+          ),
         },
       });
     } finally {
@@ -304,14 +304,30 @@ export function GridcraftStudio({
     syncShareUrl,
   ]);
 
-  const handleCommandKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        event.preventDefault();
-        void handleRun();
+  useEffect(() => {
+    const handleGlobalShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") {
         return;
       }
 
+      if (isRunning) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      void handleRun();
+    };
+
+    window.addEventListener("keydown", handleGlobalShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", handleGlobalShortcut);
+    };
+  }, [handleRun, isRunning]);
+
+  const handleCommandKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
       if (event.key === "ArrowUp") {
         event.preventDefault();
         dispatch({ type: "historyUp" });
@@ -323,7 +339,7 @@ export function GridcraftStudio({
         dispatch({ type: "historyDown" });
       }
     },
-    [handleRun],
+    [],
   );
 
   const handleCopy = useCallback(async () => {
@@ -358,15 +374,14 @@ export function GridcraftStudio({
     const blob = new Blob([state.execution.output], { type: format.mimeType });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     anchor.href = url;
-    anchor.download = `gridcraft-output.${format.extension}`;
+    anchor.download = `output_${timestamp}.${format.extension}`;
     anchor.click();
     window.setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 0);
   }, [state.execution.output, state.outputFormat]);
-
-  const isRunning = state.execution.status === "running";
 
   return (
     <main className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
@@ -440,10 +455,8 @@ export function GridcraftStudio({
 
             <OutputPanel
               output={state.execution.output}
-              outputPreview={state.execution.outputPreview}
               error={state.execution.errorMessage}
               executionStatus={state.execution.status}
-              isPreviewTruncated={state.execution.isOutputPreviewTruncated}
               outputFormat={state.outputFormat}
               runSummary={state.execution.runSummary}
               copyStatus={state.copyStatus}

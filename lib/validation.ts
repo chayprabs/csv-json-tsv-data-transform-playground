@@ -1,5 +1,5 @@
 export const MAX_INPUT_BYTES = 10 * 1024 * 1024;
-export const MAX_COMMAND_LENGTH = 1000;
+export const MAX_COMMAND_LENGTH = 2000;
 export const MAX_SHARE_URL_LENGTH = 8_000;
 
 interface ValidationOptions {
@@ -29,28 +29,28 @@ export function validateRunRequest({
   if (!input.trim()) {
     return {
       code: "EMPTY_INPUT",
-      message: "Please paste some data first.",
+      message: "Paste some data to get started",
     };
   }
 
   if (!command.trim()) {
     return {
       code: "EMPTY_COMMAND",
-      message: "Please enter a transformation command.",
+      message: "Enter a transformation command",
     };
   }
 
   if (getInputSizeInBytes(input) > MAX_INPUT_BYTES) {
     return {
       code: "INPUT_TOO_LARGE",
-      message: "Input is too large. The current limit is 10 MB.",
+      message: "Input is too large (max 10MB)",
     };
   }
 
   if (command.trim().length > MAX_COMMAND_LENGTH) {
     return {
       code: "COMMAND_TOO_LONG",
-      message: "Command is too long. Please keep it under 1000 characters.",
+      message: "Command is too long",
     };
   }
 

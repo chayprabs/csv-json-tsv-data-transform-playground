@@ -6,10 +6,8 @@ import type { CopyStatus, ExecutionStatus, RunSummary } from "@/lib/studioState"
 
 interface OutputPanelProps {
   output: string;
-  outputPreview: string;
   error: string | null;
   executionStatus: ExecutionStatus;
-  isPreviewTruncated: boolean;
   outputFormat: DataFormatId;
   runSummary: RunSummary | null;
   copyStatus: CopyStatus;
@@ -33,10 +31,8 @@ function getCopyLabel(copyStatus: CopyStatus) {
 
 export const OutputPanel = memo(function OutputPanel({
   output,
-  outputPreview,
   error,
   executionStatus,
-  isPreviewTruncated,
   outputFormat,
   runSummary,
   copyStatus,
@@ -48,12 +44,16 @@ export const OutputPanel = memo(function OutputPanel({
   const outputFormatLabel = getFormatById(outputFormat).label;
   const hasOutput = output.length > 0;
   const isRunning = executionStatus === "running";
+  const isEmptyResult =
+    executionStatus === "success" && (runSummary?.outputRows ?? 0) === 0;
   const copyLabel = getCopyLabel(copyStatus);
   const shouldShowRetry = executionStatus === "error";
-  const shouldRenderPreview = isRunning
-    ? "Running..."
+  const outputText = isRunning
+    ? "Running transformation..."
     : hasOutput
-      ? outputPreview
+      ? output
+      : isEmptyResult
+        ? "Transformation returned 0 rows."
       : "Run a transformation to see output here.";
 
   return (
@@ -101,6 +101,7 @@ export const OutputPanel = memo(function OutputPanel({
         <div
           className="mt-4 rounded-2xl border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-4 py-3 font-mono text-sm leading-6 text-[color:var(--danger)]"
           role="alert"
+          aria-live="assertive"
         >
           <strong className="font-semibold">Execution error:</strong> {error}
         </div>
@@ -111,14 +112,13 @@ export const OutputPanel = memo(function OutputPanel({
       </div>
 
       <div className="mt-4 space-y-3">
-        <VirtualizedOutput text={shouldRenderPreview} />
-
-        {isPreviewTruncated ? (
-          <p className="text-sm text-[color:var(--muted)]">
-            Showing a preview of the first part of the output. Copy and
-            download still use the full result.
-          </p>
+        {isEmptyResult ? (
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--muted)]">
+            Transformation returned 0 rows.
+          </div>
         ) : null}
+
+        <VirtualizedOutput text={outputText} />
 
         {runSummary ? (
           <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--muted)]">

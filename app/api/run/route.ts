@@ -11,7 +11,9 @@ import {
   runRequestSchema,
   type RunResponseCode,
 } from "@/lib/apiContract";
+import { normalizeCommandArgs } from "@/lib/commandCompatibility";
 import { getCommandPolicyViolation } from "@/lib/commandPolicy";
+import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getFormatById } from "@/lib/formats";
 import { MAX_INPUT_BYTES, validateRunRequest } from "@/lib/validation";
 
@@ -43,7 +45,7 @@ function createRunResponse({
   return NextResponse.json(
     {
       output,
-      error,
+      error: error === null ? null : sanitizeErrorMessage(error),
       code,
     },
     {
@@ -53,29 +55,6 @@ function createRunResponse({
       },
     },
   );
-}
-
-function normalizeEngineError(error: string) {
-  let normalized = error.replace(/\r\n/g, "\n").trim();
-
-  normalized = normalized.replace(/^[a-z][a-z0-9-]{1,20}:\s*/gim, "").trim();
-  normalized = normalized.replace(/filename\s+\(stdin\)/gi, "input");
-  normalized = normalized.replace(/\bverb\b/gi, "operation");
-  normalized = normalized.replace(/\bVerb\b/g, "Operation");
-  normalized = normalized.replace(
-    /Please use\s+"[^"]+"\s+for a list\./i,
-    "Use the operations reference for available operations.",
-  );
-
-  const unknownOperationMatch = normalized.match(
-    /^operation\s+"([^"]+)"\s+not found/i,
-  );
-
-  if (unknownOperationMatch) {
-    return `Unknown operation "${unknownOperationMatch[1]}".`;
-  }
-
-  return normalized || "The transformation failed.";
 }
 
 function tokenizeCommand(command: string) {
@@ -282,15 +261,15 @@ export async function POST(request: NextRequest) {
   let parsedArgs: string[];
 
   try {
-    parsedArgs = tokenizeCommand(payload.command);
+    parsedArgs = normalizeCommandArgs(tokenizeCommand(payload.command));
   } catch (error) {
     return createRunResponse({
       status: 422,
       code: RUN_RESPONSE_CODES.commandParse,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unable to parse the transformation command.",
+      error: sanitizeErrorMessage(
+        error,
+        "Unable to parse the transformation command.",
+      ),
     });
   }
 
@@ -357,8 +336,9 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 422,
         code: RUN_RESPONSE_CODES.engineFailure,
-        error: normalizeEngineError(
+        error: sanitizeErrorMessage(
           result.stderr || `Process exited with code ${result.exitCode}.`,
+          "The transformation failed.",
         ),
         output: result.stdout,
       });

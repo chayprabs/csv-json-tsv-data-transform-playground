@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 const MAX_STATIC_LINE_COUNT = 500;
 const LINE_HEIGHT_PX = 24;
@@ -17,9 +17,17 @@ export const VirtualizedOutput = memo(function VirtualizedOutput({
   const [scrollTop, setScrollTop] = useState(0);
   const lines = useMemo(() => text.replace(/\r\n/g, "\n").split("\n"), [text]);
 
+  useEffect(() => {
+    setScrollTop(0);
+  }, [text]);
+
   if (lines.length <= MAX_STATIC_LINE_COUNT) {
     return (
-      <pre className="min-h-[18rem] overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-[#13221c] px-4 py-4 font-mono text-sm leading-6 text-[#e8f5ef]">
+      <pre
+        className="min-h-[18rem] overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-[#13221c] px-4 py-4 font-mono text-sm leading-6 text-[#e8f5ef]"
+        tabIndex={0}
+        aria-label="Transformation output"
+      >
         {text}
       </pre>
     );
@@ -41,6 +49,8 @@ export const VirtualizedOutput = memo(function VirtualizedOutput({
       className="min-h-[18rem] overflow-auto rounded-2xl border border-[color:var(--border)] bg-[#13221c] font-mono text-sm leading-6 text-[#e8f5ef]"
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
       style={{ height: `${VIEWPORT_HEIGHT_PX}px` }}
+      tabIndex={0}
+      aria-label="Transformation output"
     >
       <div
         style={{

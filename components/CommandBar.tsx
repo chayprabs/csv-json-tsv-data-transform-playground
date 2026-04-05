@@ -55,8 +55,8 @@ export const CommandBar = memo(function CommandBar({
           >
             Full operation chain only. Example:{" "}
             <code>filter &apos;$age &gt; 30&apos; then cut -f name,age</code>.
-            Run with <code>Cmd/Ctrl + Enter</code>. Arrow Up and Arrow Down step
-            through the last 20 commands.
+            Run from anywhere in the workspace with <code>Cmd/Ctrl + Enter</code>.
+            Arrow Up and Arrow Down step through the last 20 commands.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export const CommandBar = memo(function CommandBar({
             className="rounded-xl bg-[color:var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[color:var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             onClick={onRun}
-            disabled={isRunning}
+            disabled={disabled}
           >
             {isRunning ? (
               <span className="inline-flex items-center gap-2">

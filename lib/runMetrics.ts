@@ -1,7 +1,4 @@
 import type { DataFormatId } from "@/lib/formats";
-
-const MAX_OUTPUT_PREVIEW_LINES = 2000;
-const MAX_OUTPUT_PREVIEW_CHARACTERS = 200_000;
 const DOUBLE_QUOTE = '"';
 
 function getNonEmptyLines(value: string): string[] {
@@ -84,45 +81,4 @@ export function countRowsForFormat(
   }
 
   return getNonEmptyLines(value).length;
-}
-
-export interface OutputPreviewResult {
-  preview: string;
-  isTruncated: boolean;
-}
-
-export function createOutputPreview(output: string): OutputPreviewResult {
-  if (!output) {
-    return {
-      preview: "",
-      isTruncated: false,
-    };
-  }
-
-  const normalizedOutput = output.replace(/\r\n/g, "\n");
-  let lineCount = 1;
-  let previewLength = normalizedOutput.length;
-  let isTruncated = false;
-
-  for (let index = 0; index < normalizedOutput.length; index += 1) {
-    if (normalizedOutput[index] === "\n") {
-      lineCount += 1;
-    }
-
-    if (
-      lineCount > MAX_OUTPUT_PREVIEW_LINES ||
-      index + 1 > MAX_OUTPUT_PREVIEW_CHARACTERS
-    ) {
-      previewLength = index;
-      isTruncated = true;
-      break;
-    }
-  }
-
-  const preview = normalizedOutput.slice(0, previewLength).trimEnd();
-
-  return {
-    preview,
-    isTruncated,
-  };
 }
