@@ -1,0 +1,15 @@
+[A1] - Removed the hard dependency on generated .next/types for clean `npx tsc --noEmit` runs and switched the repo lint script to plain ESLint so linting no longer reintroduces that tsconfig mutation - tsconfig.json, package.json
+[A2] - Added a command policy layer that blocks unsupported file-based verbs and dangerous Miller DSL built-ins like `system()`, `exec()`, and `stat()` before invoking `mlr` - app/api/run/route.ts, lib/commandPolicy.ts
+[A3] - Wrapped the App Router page in `Suspense` so URL-state hydration via `useSearchParams()` builds cleanly in production - app/page.tsx
+[B1/C2/FIX-MANDATORY-01/FIX-MANDATORY-02] - Added shared run validation plus guaranteed visible UI error surfacing for empty input, empty commands, and oversized input before any request is sent - components/MillerPlayground.tsx, lib/validation.ts, app/api/run/route.ts
+[B2/FIX-MANDATORY-05] - Added last-20 command history with Arrow Up / Arrow Down navigation in the command input - components/MillerPlayground.tsx, components/CommandBar.tsx
+[B3/B5/F1/FIX-MANDATORY-06/FIX-MANDATORY-08] - Added input/output row counts, execution timing, and compact result metadata after successful runs - components/MillerPlayground.tsx, components/OutputPanel.tsx, lib/runMetrics.ts
+[B4/FIX-MANDATORY-07] - Added shareable URL state encoding/decoding with initial hydration from query params and `router.replace()` updates on run - components/MillerPlayground.tsx, lib/shareState.ts
+[C1/FIX-MANDATORY-03] - Added a complete loading state: disabled controls, spinner, running placeholder, and consistent result clearing while commands execute - components/MillerPlayground.tsx, components/InputPanel.tsx, components/CommandBar.tsx, components/OutputPanel.tsx, components/VerbReference.tsx
+[C3/F2] - Annotated policy-limited verbs in the sidebar with badges and explicit limitation notes - lib/verbs.ts, components/VerbReference.tsx
+[C4] - Normalized user-correctable API failures to structured HTTP 200 `{ output, error }` responses instead of 4xx crashes for expected user mistakes - app/api/run/route.ts
+[D1] - Hardened `runMiller()` response parsing so malformed or non-JSON responses still surface stable user-facing errors - lib/runMiller.ts
+[D2] - Extracted reusable helpers for validation, row counting, output preview generation, and URL-state serialization to simplify the main playground component - lib/validation.ts, lib/runMetrics.ts, lib/shareState.ts, components/MillerPlayground.tsx
+[D3] - Added explicit labels, ids, `aria-describedby`, `aria-live`, and alert semantics across primary controls and errors - components/InputPanel.tsx, components/CommandBar.tsx, components/OutputPanel.tsx, components/VerbReference.tsx
+[E1] - Added capped preview rendering for very large outputs while preserving the full result for copy/download - lib/runMetrics.ts, components/MillerPlayground.tsx, components/OutputPanel.tsx
+[E2] - Kept the sidebar lightweight when collapsed and disabled sidebar interactions during active execution to avoid inconsistent UI state - components/MillerPlayground.tsx, components/VerbReference.tsx
