@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { CommandBar } from "@/components/CommandBar";
 import { InputPanel } from "@/components/InputPanel";
 import { OutputPanel } from "@/components/OutputPanel";
+import { deriveEmptyOutputFallback } from "@/lib/emptyOutput";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getFormatById } from "@/lib/formats";
 import { getClientSessionId } from "@/lib/clientSession";
@@ -265,13 +266,24 @@ export function GridcraftStudio({
 
       const durationMs = Math.round(performance.now() - startedAt);
 
+      const outputRows = countRowsForFormat(result.output, state.outputFormat);
+      const displayOutput =
+        outputRows === 0 && !result.output
+          ? deriveEmptyOutputFallback({
+              input: state.input,
+              command: state.command,
+              inputFormat: state.inputFormat,
+              outputFormat: state.outputFormat,
+            })
+          : result.output;
+
       dispatch({
         type: "runSuccess",
         payload: {
-          output: result.output,
+          output: displayOutput,
           runSummary: {
             inputRows: countRowsForFormat(state.input, state.inputFormat),
-            outputRows: countRowsForFormat(result.output, state.outputFormat),
+            outputRows,
             durationMs,
           },
         },
@@ -384,7 +396,10 @@ export function GridcraftStudio({
   }, [state.execution.output, state.outputFormat]);
 
   return (
-    <main className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+    <main
+      className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8"
+      id="main-content"
+    >
       <div className="rounded-[2rem] border border-white/60 bg-white/40 p-4 backdrop-blur sm:p-6 lg:p-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="space-y-6">

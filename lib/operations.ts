@@ -209,9 +209,9 @@ const curatedOperationContent: Record<
     insertText: "step -a delta,sum -f salary -g dept",
   },
   "format-values": {
-    description: "Formats field values with printf-style templates.",
-    example: "format-values -f salary -s '%.2f'",
-    insertText: "format-values -f salary -s '%.2f'",
+    description: "Formats selected numeric fields with printf-style templates.",
+    example: "format-values -f %.2f -k salary",
+    insertText: "format-values -f %.2f -k salary",
   },
   "fill-down": {
     description: "Carries the last non-empty value forward through later rows.",

@@ -72,3 +72,5 @@
  POST /api/run 422 in 118ms
  POST /api/run 200 in 107ms
  ✓ Compiled in 743ms (710 modules)
+ POST /api/run 200 in 481ms
+ POST /api/run 200 in 70ms

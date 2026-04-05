@@ -15,7 +15,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <a
+          className="skip-link"
+          href="#main-content"
+        >
+          Skip to workspace
+        </a>
+        {children}
+      </body>
     </html>
   );
 }
