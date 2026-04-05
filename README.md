@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gridcraft Studio
 
-## Getting Started
+Gridcraft Studio is a data transformation workspace for structured text formats. Paste tabular or record-based input, run command chains, switch output formats, compare row counts, and share the exact workspace state through the URL.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Paste and transform CSV, TSV, JSON, NDJSON, and DKVP input
+- Run chained transformation commands from a single command bar
+- Load example presets for filtering, reordering, reshaping, and summary stats
+- Browse a reference list of supported operations and insert starter syntax
+- Copy results, download them as files, and share the current workspace state by URL
+- View execution time plus input and output row counts after each successful run
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. Ensure a compatible engine executable is available at `bin/transform-engine` or `bin/transform-engine.exe`.
 
-To learn more about Next.js, take a look at the following resources:
+3. Start the development server:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Open `http://127.0.0.1:3000`.
 
-## Deploy on Vercel
+5. Create a production build any time with:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run build
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Supported formats
+
+- CSV
+- TSV
+- JSON
+- NDJSON
+- DKVP
+
+## Supported operations
+
+Gridcraft Studio ships with a broad command reference, including:
+
+- `cat`
+- `cut`
+- `filter`
+- `head`
+- `tail`
+- `sort`
+- `rename`
+- `reorder`
+- `uniq`
+- `count`
+- `stats1`
+- `stats2`
+- `histogram`
+- `reshape`
+- `flatten`
+- `unflatten`
+- `label`
+- `put`
+- `step`
+- `format-values`
+- `fill-down`
+- `fill-empty`
+- `skip-trivial-records`
+
+Some file-oriented or side-output operations remain visible in the reference but are intentionally limited by the execution policy inside the workspace.
+
+## URL sharing
+
+Every run updates the page URL with the current input, command, input format, and output format. Opening that link restores the same workspace state, which makes it easy to hand off reproducible examples.
+
+## Execution layer
+
+The app uses a server-side execution route. Requests are posted to `app/api/run/route.ts`, validated, and passed to the local engine executable with structured arguments instead of a shell string. The route enforces input-size limits, command-length limits, execution timeout handling, and workspace-specific policy checks before the process starts.
+
+## Adding new operation examples
+
+Update `lib/operations.ts`.
+
+- Add or improve an entry in `curatedOperationContent`
+- Set `description` to the one-line explanation shown in the sidebar
+- Set `example` to the minimal display example
+- Set `insertText` to the syntax inserted into the command bar on click
+
+## Workspace structure
+
+- `app/page.tsx`: mounts the main studio view
+- `components/GridcraftStudio.tsx`: main UI state and interactions
+- `components/OperationsReference.tsx`: reference sidebar
+- `app/api/run/route.ts`: execution endpoint and error normalization
+- `scripts/prepare-engine.mjs`: engine preparation script
+- `ARCHITECTURE_NOTES.md`: architecture summary
+"# csv-json-tsv-data-transform-playground" 
