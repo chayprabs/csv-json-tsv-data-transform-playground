@@ -1,0 +1,14 @@
+
+> gridcraft-studio@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.14
+   - Local:        http://localhost:3000
+   - Network:      http://172.17.112.51:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ○ Compiling / ...
+ ✓ Compiled / in 13.5s (778 modules)
+ GET / 200 in 15900ms
+ ✓ Compiled in 2.8s (335 modules)
