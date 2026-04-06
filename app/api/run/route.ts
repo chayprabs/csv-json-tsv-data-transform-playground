@@ -25,7 +25,15 @@ const ENGINE_NAME = process.platform === "win32"
   : "transform-engine";
 const MAX_EXECUTION_TIME_MS = 10_000;
 const SESSION_LOCK_TTL_MS = MAX_EXECUTION_TIME_MS + 5_000;
+const MAX_REQUEST_BODY_BYTES = MAX_INPUT_BYTES + 64 * 1024;
 const activeSessions = new Map<string, number>();
+
+class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("Request body is too large.");
+    this.name = "RequestBodyTooLargeError";
+  }
+}
 
 function getEngineBinaryPath() {
   return path.join(process.cwd(), "bin", ENGINE_NAME);
@@ -211,11 +219,86 @@ function getValidationStatus(validationCode: ReturnType<typeof validateRunReques
   }
 }
 
+function concatenateChunks(chunks: Uint8Array[], totalBytes: number) {
+  const buffer = new Uint8Array(totalBytes);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return buffer;
+}
+
+async function readRequestBodyWithLimit(request: NextRequest) {
+  const contentLengthHeader = request.headers.get("content-length");
+  const declaredContentLength = contentLengthHeader
+    ? Number.parseInt(contentLengthHeader, 10)
+    : Number.NaN;
+
+  if (
+    Number.isFinite(declaredContentLength) &&
+    declaredContentLength > MAX_REQUEST_BODY_BYTES
+  ) {
+    throw new RequestBodyTooLargeError();
+  }
+
+  if (!request.body) {
+    return "";
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    totalBytes += value.length;
+
+    if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+      throw new RequestBodyTooLargeError();
+    }
+
+    chunks.push(value);
+  }
+
+  return new TextDecoder().decode(concatenateChunks(chunks, totalBytes));
+}
+
 export async function POST(request: NextRequest) {
   let requestBody: unknown;
+  let requestText: string;
 
   try {
-    requestBody = await request.json();
+    requestText = await readRequestBodyWithLimit(request);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return createRunResponse({
+        status: 413,
+        code: RUN_RESPONSE_CODES.validation,
+        error: "Input is too large. The current limit is 10 MB.",
+      });
+    }
+
+    return createRunResponse({
+      status: 400,
+      code: RUN_RESPONSE_CODES.invalidJson,
+      error: "Request body must be valid JSON.",
+    });
+  }
+
+  try {
+    requestBody = JSON.parse(requestText) as unknown;
   } catch {
     return createRunResponse({
       status: 400,

@@ -29,6 +29,13 @@ const contentSecurityPolicy = [
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  typescript: {
+    tsconfigPath: "./tsconfig.next.json",
+  },
+  experimental: {
+    devtoolSegmentExplorer: false,
+    browserDebugInfoInTerminal: false,
+  },
   async headers() {
     return [
       {

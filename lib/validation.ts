@@ -29,21 +29,21 @@ export function validateRunRequest({
   if (!input.trim()) {
     return {
       code: "EMPTY_INPUT",
-      message: "Paste some data to get started",
+      message: "Please paste some data",
     };
   }
 
   if (!command.trim()) {
     return {
       code: "EMPTY_COMMAND",
-      message: "Enter a transformation command",
+      message: "Please enter a transformation command",
     };
   }
 
   if (getInputSizeInBytes(input) > MAX_INPUT_BYTES) {
     return {
       code: "INPUT_TOO_LARGE",
-      message: "Input is too large (max 10MB)",
+      message: "Input is too large. The limit is 10 MB.",
     };
   }
 

@@ -49,7 +49,7 @@ export const OutputPanel = memo(function OutputPanel({
   const copyLabel = getCopyLabel(copyStatus);
   const shouldShowRetry = executionStatus === "error";
   const outputText = isRunning
-    ? "Running transformation..."
+    ? "Running..."
     : hasOutput
       ? output
       : isEmptyResult

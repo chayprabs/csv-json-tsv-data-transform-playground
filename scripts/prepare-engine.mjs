@@ -8,6 +8,10 @@ const engineName = process.platform === "win32"
   : "transform-engine";
 const enginePath = path.join(binDir, engineName);
 
+function writeMessage(stream, message) {
+  stream.write(`${message}\n`);
+}
+
 async function exists(targetPath) {
   try {
     await stat(targetPath);
@@ -39,7 +43,7 @@ async function main() {
     if (process.platform !== "win32") {
       await chmod(enginePath, 0o755);
     }
-    console.log(`Engine executable ready at ${enginePath}.`);
+    writeMessage(process.stdout, `Engine executable ready at ${enginePath}.`);
     return;
   }
 
@@ -52,7 +56,7 @@ async function main() {
       await chmod(enginePath, 0o755);
     }
 
-    console.log(`Prepared engine executable at ${enginePath}.`);
+    writeMessage(process.stdout, `Prepared engine executable at ${enginePath}.`);
     return;
   }
 
@@ -65,17 +69,19 @@ async function main() {
       await chmod(enginePath, 0o755);
     }
 
-    console.log(`Renamed bundled executable to ${enginePath}.`);
+    writeMessage(process.stdout, `Renamed bundled executable to ${enginePath}.`);
     return;
   }
 
-  console.warn(
+  writeMessage(
+    process.stderr,
     `No engine executable was found. Place a compatible binary at ${enginePath} or set ENGINE_BINARY_PATH before install.`,
   );
 }
 
 main().catch((error) => {
-  console.error(
+  writeMessage(
+    process.stderr,
     error instanceof Error ? error.message : "Unknown engine preparation error.",
   );
   process.exit(1);

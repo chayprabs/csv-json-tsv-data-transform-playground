@@ -104,9 +104,37 @@ function normalizeFormatValuesSegment(segment: string[]) {
   return ["put", assignments.join("; ")];
 }
 
+function normalizeCountDistinctSegment(segment: string[]) {
+  if (segment[0] !== "count-distinct") {
+    return segment;
+  }
+
+  if (segment.includes("-n") || segment.includes("-x")) {
+    return segment;
+  }
+
+  let groupByFields: string | null = null;
+
+  for (let index = 1; index < segment.length; index += 1) {
+    const token = segment[index];
+    const nextToken = segment[index + 1] ?? null;
+
+    if (token === "-g" && nextToken) {
+      groupByFields = nextToken;
+      index += 1;
+    }
+  }
+
+  return groupByFields
+    ? [...segment, "then", "count", "-g", groupByFields]
+    : [...segment, "then", "count"];
+}
+
 export function normalizeCommandArgs(parsedArgs: string[]) {
   const normalizedSegments = splitCommandSegments(parsedArgs).map((segment) =>
-    normalizeFormatValuesSegment(normalizeUniqSegment(segment)),
+    normalizeCountDistinctSegment(
+      normalizeFormatValuesSegment(normalizeUniqSegment(segment)),
+    ),
   );
 
   return flattenCommandSegments(normalizedSegments);

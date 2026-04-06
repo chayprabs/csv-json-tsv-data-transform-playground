@@ -19,21 +19,21 @@ Gridcraft Studio is a data transformation workspace for structured text formats.
    npm install
    ```
 
-2. Ensure a compatible engine executable is available at `bin/transform-engine` or `bin/transform-engine.exe`.
-
-3. Start the development server:
+2. Start the development server:
 
    ```bash
    npm run dev
    ```
 
-4. Open `http://127.0.0.1:3000`.
+3. Open the local URL printed by Next in the terminal.
 
-5. Create a production build any time with:
+4. Create a production build any time with:
 
    ```bash
    npm run build
    ```
+
+The bundled `postinstall` step prepares `bin/transform-engine` automatically. If you need to override the bundled engine during install, set `ENGINE_BINARY_PATH` before running `npm install`.
 
 ## Supported formats
 
@@ -98,4 +98,3 @@ Update `lib/operations.ts`.
 - `app/api/run/route.ts`: execution endpoint and error normalization
 - `scripts/prepare-engine.mjs`: engine preparation script
 - `ARCHITECTURE_NOTES.md`: architecture summary
-"# csv-json-tsv-data-transform-playground" 

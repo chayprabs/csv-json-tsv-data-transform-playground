@@ -126,14 +126,28 @@ export function GridcraftStudio({
     [state.selectedPresetId],
   );
 
-  const syncShareUrl = useCallback(
-    (nextState: SharedStudioState) => {
-      router.replace(buildSharedStateUrl("/", nextState), {
-        scroll: false,
-      });
-    },
-    [router],
+  const shareableState = useMemo<SharedStudioState>(
+    () => ({
+      input: state.input,
+      command: state.command,
+      inputFormat: state.inputFormat,
+      outputFormat: state.outputFormat,
+    }),
+    [state.command, state.input, state.inputFormat, state.outputFormat],
   );
+
+  useEffect(() => {
+    const nextUrl = buildSharedStateUrl("/", shareableState);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (currentUrl === nextUrl) {
+      return;
+    }
+
+    router.replace(nextUrl, {
+      scroll: false,
+    });
+  }, [router, shareableState]);
 
   const getSessionId = useCallback(() => {
     if (!sessionIdRef.current) {
@@ -208,8 +222,8 @@ export function GridcraftStudio({
 
   const handleRun = useCallback(async () => {
     const validationError = validateRunRequest({
-      input: state.input,
-      command: state.command,
+      input: shareableState.input,
+      command: shareableState.command,
     });
 
     if (validationError) {
@@ -222,17 +236,9 @@ export function GridcraftStudio({
       return;
     }
 
-    const nextRunState: SharedStudioState = {
-      input: state.input,
-      command: state.command,
-      inputFormat: state.inputFormat,
-      outputFormat: state.outputFormat,
-    };
-
-    syncShareUrl(nextRunState);
     dispatch({
       type: "recordCommandHistory",
-      payload: state.command,
+      payload: shareableState.command,
     });
 
     activeRequestControllerRef.current?.abort();
@@ -245,7 +251,7 @@ export function GridcraftStudio({
     dispatch({ type: "startRun" });
 
     try {
-      const result = await runTransform(nextRunState, {
+      const result = await runTransform(shareableState, {
         signal: requestController.signal,
         sessionId: getSessionId(),
       });
@@ -266,14 +272,17 @@ export function GridcraftStudio({
 
       const durationMs = Math.round(performance.now() - startedAt);
 
-      const outputRows = countRowsForFormat(result.output, state.outputFormat);
+      const outputRows = countRowsForFormat(
+        result.output,
+        shareableState.outputFormat,
+      );
       const displayOutput =
         outputRows === 0 && !result.output
           ? deriveEmptyOutputFallback({
-              input: state.input,
-              command: state.command,
-              inputFormat: state.inputFormat,
-              outputFormat: state.outputFormat,
+              input: shareableState.input,
+              command: shareableState.command,
+              inputFormat: shareableState.inputFormat,
+              outputFormat: shareableState.outputFormat,
             })
           : result.output;
 
@@ -282,7 +291,10 @@ export function GridcraftStudio({
         payload: {
           output: displayOutput,
           runSummary: {
-            inputRows: countRowsForFormat(state.input, state.inputFormat),
+            inputRows: countRowsForFormat(
+              shareableState.input,
+              shareableState.inputFormat,
+            ),
             outputRows,
             durationMs,
           },
@@ -309,11 +321,7 @@ export function GridcraftStudio({
     }
   }, [
     getSessionId,
-    state.command,
-    state.input,
-    state.inputFormat,
-    state.outputFormat,
-    syncShareUrl,
+    shareableState,
   ]);
 
   useEffect(() => {
