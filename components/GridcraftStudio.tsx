@@ -134,19 +134,6 @@ export function GridcraftStudio({
     [state.command, state.input, state.inputFormat, state.outputFormat],
   );
 
-  useEffect(() => {
-    const nextUrl = buildSharedStateUrl("/", shareableState);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-
-    if (currentUrl === nextUrl) {
-      return;
-    }
-
-    router.replace(nextUrl, {
-      scroll: false,
-    });
-  }, [router, shareableState]);
-
   const getSessionId = useCallback(() => {
     if (!sessionIdRef.current) {
       sessionIdRef.current = getClientSessionId();
@@ -329,6 +316,12 @@ export function GridcraftStudio({
           },
         },
       });
+
+      const nextUrl = buildSharedStateUrl("/", shareableState);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (currentUrl !== nextUrl) {
+        router.replace(nextUrl, { scroll: false });
+      }
     } catch (error) {
       if (requestController.signal.aborted || requestId !== latestRequestIdRef.current) {
         return;
@@ -350,6 +343,7 @@ export function GridcraftStudio({
     }
   }, [
     getSessionId,
+    router,
     shareableState,
   ]);
 
@@ -397,7 +391,13 @@ export function GridcraftStudio({
         throw new Error("Clipboard access is not available in this browser.");
       }
 
-      await navigator.clipboard.writeText(window.location.href);
+      const path = buildSharedStateUrl("/", shareableState);
+      const fullUrl =
+        path === "/"
+          ? `${window.location.origin}/`
+          : `${window.location.origin}${path}`;
+
+      await navigator.clipboard.writeText(fullUrl);
       setLinkCopied(true);
       window.setTimeout(() => {
         setLinkCopied(false);
@@ -405,7 +405,7 @@ export function GridcraftStudio({
     } catch {
       setLinkCopied(false);
     }
-  }, []);
+  }, [shareableState]);
 
   const handleCopy = useCallback(async () => {
     if (!state.execution.output) {
