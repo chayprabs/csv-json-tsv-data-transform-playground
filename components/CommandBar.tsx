@@ -28,18 +28,18 @@ export const CommandBar = memo(function CommandBar({
   onRun,
 }: CommandBarProps) {
   return (
-    <section className="panel-surface rounded-3xl p-5 sm:p-6">
+    <section className="panel-surface p-5 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
         <div className="flex-1">
           <label
-            className="block text-sm font-semibold text-[color:var(--foreground)]"
+            className="block text-sm font-medium text-[color:var(--foreground)]"
             htmlFor="transform-command"
           >
-            Transformation command
+            Command
           </label>
           <input
             id="transform-command"
-            className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 font-mono text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
+            className="mt-2 w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2.5 font-mono text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
             type="text"
             spellCheck={false}
             value={command}
@@ -50,13 +50,10 @@ export const CommandBar = memo(function CommandBar({
             aria-describedby="command-help"
           />
           <p
-            className="mt-2 text-sm text-[color:var(--muted)]"
+            className="mt-2 text-xs text-[color:var(--muted)]"
             id="command-help"
           >
-            Full operation chain only. Example:{" "}
-            <code>filter &apos;$age &gt; 30&apos; then cut -f name,age</code>.
-            Run from anywhere in the workspace with <code>Cmd/Ctrl + Enter</code>.
-            Arrow Up and Arrow Down step through the last 20 commands.
+            <code>Cmd/Ctrl+Enter</code> runs. Arrow keys browse command history.
           </p>
         </div>
 
@@ -68,7 +65,7 @@ export const CommandBar = memo(function CommandBar({
             <span>Output</span>
             <select
               id="output-format"
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
               value={outputFormat}
               onChange={(event) => {
                 if (isDataFormatId(event.target.value)) {
@@ -85,7 +82,7 @@ export const CommandBar = memo(function CommandBar({
             </select>
           </label>
           <button
-            className="rounded-xl bg-[color:var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[color:var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[color:var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             onClick={onRun}
             disabled={disabled}
