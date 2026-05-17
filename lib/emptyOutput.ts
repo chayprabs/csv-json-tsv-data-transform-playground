@@ -1,10 +1,10 @@
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 
 interface EmptyOutputFallbackOptions {
   input: string;
   command: string;
   inputFormat: DataFormatId;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
 }
 
 function parseDelimitedHeader(input: string, delimiter: string) {
@@ -161,7 +161,7 @@ export function deriveEmptyOutputFallback({
     return "[]\n";
   }
 
-  if (outputFormat === "ndjson" || outputFormat === "dkvp") {
+  if (outputFormat === "ndjson") {
     return "";
   }
 

@@ -5,7 +5,11 @@ import {
   isDataFormatId,
   type DataFormatId,
 } from "@/lib/formats";
-import { MAX_INPUT_BYTES, getInputSizeInBytes } from "@/lib/validation";
+import {
+  MAX_INPUT_BYTES,
+  getInputLargeSlowWarning,
+  getInputSizeInBytes,
+} from "@/lib/validation";
 
 interface InputPanelProps {
   input: string;
@@ -26,6 +30,7 @@ export const InputPanel = memo(function InputPanel({
 }: InputPanelProps) {
   const inputSizeInBytes = getInputSizeInBytes(input);
   const isInputOversize = inputSizeInBytes > MAX_INPUT_BYTES;
+  const largeSlowWarning = getInputLargeSlowWarning(input);
 
   return (
     <section className="panel-surface p-5 sm:p-6">
@@ -42,9 +47,14 @@ export const InputPanel = memo(function InputPanel({
             {input.length.toLocaleString()} characters |{" "}
             {inputSizeInBytes.toLocaleString()} bytes
           </p>
+          {largeSlowWarning ? (
+            <p className="mt-2 text-sm font-medium text-amber-800">
+              {largeSlowWarning}
+            </p>
+          ) : null}
           {isInputOversize ? (
             <p className="mt-2 text-sm font-medium text-[color:var(--danger)]">
-              Input is over the 10 MB limit. Reduce the dataset before running.
+              Input exceeds the 10 MB limit
             </p>
           ) : null}
         </div>

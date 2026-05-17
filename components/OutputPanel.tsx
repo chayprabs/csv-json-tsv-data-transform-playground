@@ -1,14 +1,14 @@
 import { memo } from "react";
 
 import { VirtualizedOutput } from "@/components/VirtualizedOutput";
-import { getFormatById, type DataFormatId } from "@/lib/formats";
+import { getOutputFormatById, type OutputFormatId } from "@/lib/formats";
 import type { CopyStatus, ExecutionStatus, RunSummary } from "@/lib/studioState";
 
 interface OutputPanelProps {
   output: string;
   error: string | null;
   executionStatus: ExecutionStatus;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
   runSummary: RunSummary | null;
   copyStatus: CopyStatus;
   statusMessage: string;
@@ -41,7 +41,7 @@ export const OutputPanel = memo(function OutputPanel({
   onDownload,
   onRunAgain,
 }: OutputPanelProps) {
-  const outputFormatLabel = getFormatById(outputFormat).label;
+  const outputFormatLabel = getOutputFormatById(outputFormat).label;
   const hasOutput = output.length > 0;
   const isRunning = executionStatus === "running";
   const isEmptyResult =
@@ -83,7 +83,7 @@ export const OutputPanel = memo(function OutputPanel({
             onClick={onDownload}
             disabled={!hasOutput || isRunning}
           >
-            Download
+            Download as file
           </button>
           {shouldShowRetry ? (
             <button

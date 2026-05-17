@@ -16,7 +16,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src ${scriptSource}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self'",
   "object-src 'none'",
@@ -38,6 +38,15 @@ const nextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

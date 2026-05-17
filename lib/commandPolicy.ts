@@ -1,3 +1,5 @@
+import { POLICY_BLOCKED_MESSAGE } from "@/lib/millConstants";
+
 const UNSUPPORTED_OPERATION_REASONS: Record<string, string> = {
   join:
     "This operation requires additional server-side files, which this workspace does not expose.",
@@ -104,18 +106,56 @@ function splitCommandSegments(parsedArgs: string[]): string[][] {
   return segments;
 }
 
+function tokenLooksLikeFilePath(token: string): boolean {
+  if (
+    token === "~" ||
+    token.startsWith("~/") ||
+    token.startsWith("./") ||
+    token.includes("../")
+  ) {
+    return true;
+  }
+
+  if (/^[A-Za-z]:\\/.test(token)) {
+    return true;
+  }
+
+  if (token.startsWith("/") && token.length > 1) {
+    return true;
+  }
+
+  return false;
+}
+
+function commandContainsTeeVerb(command: string): boolean {
+  return /\btee\b/i.test(command);
+}
+
 export function getUnsupportedOperationReason(operation: string): string | null {
   return UNSUPPORTED_OPERATION_REASONS[operation] ?? null;
 }
 
 export function getCommandPolicyViolation(
   parsedArgs: string[],
+  rawCommand: string,
 ): string | null {
+  if (commandContainsTeeVerb(rawCommand)) {
+    return POLICY_BLOCKED_MESSAGE;
+  }
+
   for (const token of parsedArgs) {
+    if (token === "--from") {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
+    if (tokenLooksLikeFilePath(token)) {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
     const blockedFunctionName = findBlockedDslFunction(token);
 
     if (blockedFunctionName) {
-      return `This workspace blocks DSL functions that can access the host system, such as system(), exec(), and stat().`;
+      return POLICY_BLOCKED_MESSAGE;
     }
   }
 
@@ -131,11 +171,11 @@ export function getCommandPolicyViolation(
       getUnsupportedOperationReason(operation);
 
     if (unsupportedOperationReason) {
-      return unsupportedOperationReason;
+      return POLICY_BLOCKED_MESSAGE;
     }
 
     if ((operation === "put" || operation === "filter") && segment.includes("-f")) {
-      return `${operation} -f is blocked because it loads DSL code from server-side files.`;
+      return POLICY_BLOCKED_MESSAGE;
     }
   }
 

@@ -6,15 +6,22 @@ import { execa } from "execa";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  CLIENT_SESSION_HEADER,
   RUN_RESPONSE_CODES,
   runRequestSchema,
   type RunResponseCode,
 } from "@/lib/apiContract";
+import { checkRateLimit, getClientIpFromRequest } from "@/lib/apiRateLimit";
 import { normalizeCommandArgs } from "@/lib/commandCompatibility";
 import { getCommandPolicyViolation } from "@/lib/commandPolicy";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getFormatById } from "@/lib/formats";
+import { getFormatById, getOutputFormatById } from "@/lib/formats";
+import { RATE_LIMIT_MESSAGE } from "@/lib/millConstants";
+import { countRowsForFormat } from "@/lib/runMetrics";
+import {
+  getCachedRunResult,
+  getRunResultCacheKey,
+  setCachedRunResult,
+} from "@/lib/runResponseCache";
 import { MAX_INPUT_BYTES, validateRunRequest } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -24,9 +31,7 @@ const ENGINE_NAME = process.platform === "win32"
   ? "transform-engine.exe"
   : "transform-engine";
 const MAX_EXECUTION_TIME_MS = 10_000;
-const SESSION_LOCK_TTL_MS = MAX_EXECUTION_TIME_MS + 5_000;
 const MAX_REQUEST_BODY_BYTES = MAX_INPUT_BYTES + 64 * 1024;
-const activeSessions = new Map<string, number>();
 
 class RequestBodyTooLargeError extends Error {
   constructor() {
@@ -44,25 +49,45 @@ function createRunResponse({
   code,
   error,
   output = "",
+  inputRowCount,
+  outputRowCount,
+  durationMs,
+  headers: extraHeaders,
 }: {
   status: number;
   code: RunResponseCode;
   error: string | null;
   output?: string;
+  inputRowCount?: number;
+  outputRowCount?: number;
+  durationMs?: number;
+  headers?: Record<string, string>;
 }) {
-  return NextResponse.json(
-    {
-      output,
-      error: error === null ? null : sanitizeErrorMessage(error),
-      code,
+  const body: Record<string, unknown> = {
+    output,
+    error: error === null ? null : sanitizeErrorMessage(error),
+    code,
+  };
+
+  if (inputRowCount !== undefined) {
+    body.inputRowCount = inputRowCount;
+  }
+
+  if (outputRowCount !== undefined) {
+    body.outputRowCount = outputRowCount;
+  }
+
+  if (durationMs !== undefined) {
+    body.durationMs = durationMs;
+  }
+
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      ...extraHeaders,
     },
-    {
-      status,
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    },
-  );
+  });
 }
 
 function tokenizeCommand(command: string) {
@@ -142,52 +167,6 @@ function tokenizeCommand(command: string) {
   }
 
   return tokens;
-}
-
-function purgeExpiredSessionLocks() {
-  const now = Date.now();
-
-  activeSessions.forEach((startedAt, sessionId) => {
-    if (now - startedAt > SESSION_LOCK_TTL_MS) {
-      activeSessions.delete(sessionId);
-    }
-  });
-}
-
-function sanitizeSessionId(sessionId: string | null) {
-  if (!sessionId) {
-    return null;
-  }
-
-  if (sessionId.length > 128 || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
-    return null;
-  }
-
-  return sessionId;
-}
-
-function tryAcquireSessionLock(sessionId: string | null) {
-  if (!sessionId) {
-    return true;
-  }
-
-  purgeExpiredSessionLocks();
-
-  if (activeSessions.has(sessionId)) {
-    return false;
-  }
-
-  activeSessions.set(sessionId, Date.now());
-
-  return true;
-}
-
-function releaseSessionLock(sessionId: string | null) {
-  if (!sessionId) {
-    return;
-  }
-
-  activeSessions.delete(sessionId);
 }
 
 async function ensureEngineIsAvailable() {
@@ -286,7 +265,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 413,
         code: RUN_RESPONSE_CODES.validation,
-        error: "Input is too large. The current limit is 10 MB.",
+        error: "Input exceeds the 10 MB limit",
       });
     }
 
@@ -337,7 +316,39 @@ export async function POST(request: NextRequest) {
     return createRunResponse({
       status: 413,
       code: RUN_RESPONSE_CODES.validation,
-      error: "Input is too large. The current limit is 10 MB.",
+      error: "Input exceeds the 10 MB limit",
+    });
+  }
+
+  const clientIp = getClientIpFromRequest(
+    request.headers.get("x-forwarded-for"),
+    request.headers.get("x-real-ip"),
+  );
+  const rate = checkRateLimit(clientIp);
+
+  if (!rate.allowed) {
+    return createRunResponse({
+      status: 429,
+      code: RUN_RESPONSE_CODES.rateLimited,
+      error: RATE_LIMIT_MESSAGE,
+      headers: {
+        "Retry-After": String(rate.retryAfter),
+      },
+    });
+  }
+
+  const cacheKey = getRunResultCacheKey(payload);
+  const cached = getCachedRunResult(cacheKey);
+
+  if (cached) {
+    return createRunResponse({
+      status: 200,
+      code: RUN_RESPONSE_CODES.ok,
+      error: null,
+      output: cached.output,
+      inputRowCount: cached.inputRowCount,
+      outputRowCount: cached.outputRowCount,
+      durationMs: cached.durationMs,
     });
   }
 
@@ -364,26 +375,16 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const commandPolicyViolation = getCommandPolicyViolation(parsedArgs);
+  const commandPolicyViolation = getCommandPolicyViolation(
+    parsedArgs,
+    payload.command,
+  );
 
   if (commandPolicyViolation) {
     return createRunResponse({
-      status: 403,
+      status: 400,
       code: RUN_RESPONSE_CODES.policyViolation,
       error: commandPolicyViolation,
-    });
-  }
-
-  const sessionId = sanitizeSessionId(
-    request.headers.get(CLIENT_SESSION_HEADER),
-  );
-
-  if (!tryAcquireSessionLock(sessionId)) {
-    return createRunResponse({
-      status: 429,
-      code: RUN_RESPONSE_CODES.rateLimited,
-      error:
-        "Another transformation is already running for this workspace session. Wait for it to finish or cancel it first.",
     });
   }
 
@@ -398,11 +399,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const startedAt = Date.now();
+
     const result = await execa(
       binaryPath,
       [
         getFormatById(payload.inputFormat).inputFlag,
-        getFormatById(payload.outputFormat).outputFlag,
+        getOutputFormatById(payload.outputFormat).outputFlag,
         ...parsedArgs,
       ],
       {
@@ -412,7 +415,15 @@ export async function POST(request: NextRequest) {
         stripFinalNewline: false,
         timeout: MAX_EXECUTION_TIME_MS,
         windowsHide: true,
+        env: {},
       },
+    );
+
+    const durationMs = Math.max(0, Date.now() - startedAt);
+    const inputRowCount = countRowsForFormat(payload.input, payload.inputFormat);
+    const outputRowCount = countRowsForFormat(
+      result.stdout,
+      payload.outputFormat,
     );
 
     if (result.exitCode !== 0) {
@@ -427,11 +438,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    setCachedRunResult(cacheKey, {
+      output: result.stdout,
+      inputRowCount,
+      outputRowCount,
+      durationMs,
+    });
+
     return createRunResponse({
       status: 200,
       code: RUN_RESPONSE_CODES.ok,
       error: null,
       output: result.stdout,
+      inputRowCount,
+      outputRowCount,
+      durationMs,
     });
   } catch (error) {
     if (request.signal.aborted) {
@@ -458,7 +479,5 @@ export async function POST(request: NextRequest) {
       code: RUN_RESPONSE_CODES.unexpected,
       error: "Unexpected execution failure.",
     });
-  } finally {
-    releaseSessionLock(sessionId);
   }
 }

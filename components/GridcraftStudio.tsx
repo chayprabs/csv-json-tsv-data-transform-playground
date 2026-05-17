@@ -7,6 +7,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -16,7 +17,7 @@ import { InputPanel } from "@/components/InputPanel";
 import { OutputPanel } from "@/components/OutputPanel";
 import { deriveEmptyOutputFallback } from "@/lib/emptyOutput";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getFormatById } from "@/lib/formats";
+import { getOutputFormatById } from "@/lib/formats";
 import { getClientSessionId } from "@/lib/clientSession";
 import { EXAMPLE_PRESETS } from "@/lib/presets";
 import { countRowsForFormat } from "@/lib/runMetrics";
@@ -92,6 +93,9 @@ export function GridcraftStudio({
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const latestRequestIdRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
+  const commandInputRef = useRef<HTMLInputElement>(null);
+  const commandSelectionRef = useRef({ start: 0, end: 0 });
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (state.copyStatus === "idle") {
@@ -173,12 +177,44 @@ export function GridcraftStudio({
     dispatch({ type: "loadExampleDataset" });
   }, []);
 
-  const handleOperationInsert = useCallback((insertText: string) => {
-    dispatch({
-      type: "insertOperation",
-      payload: insertText,
-    });
+  const captureCommandSelection = useCallback(() => {
+    const el = commandInputRef.current;
+    if (el && typeof el.selectionStart === "number") {
+      commandSelectionRef.current = {
+        start: el.selectionStart,
+        end: el.selectionEnd ?? el.selectionStart,
+      };
+    }
   }, []);
+
+  const handleOperationInsert = useCallback(
+    (insertText: string) => {
+      const el = commandInputRef.current;
+      let start = commandSelectionRef.current.start;
+      let end = commandSelectionRef.current.end;
+      if (
+        document.activeElement === el &&
+        el &&
+        typeof el.selectionStart === "number"
+      ) {
+        start = el.selectionStart;
+        end = el.selectionEnd ?? el.selectionStart;
+      }
+
+      dispatch({
+        type: "insertOperation",
+        payload: { text: insertText, start, end },
+      });
+
+      queueMicrotask(() => {
+        el?.focus();
+        const pos = start + insertText.length;
+        el?.setSelectionRange(pos, pos);
+        commandSelectionRef.current = { start: pos, end: pos };
+      });
+    },
+    [],
+  );
 
   const handleInputChange = useCallback((nextInput: string) => {
     dispatch({
@@ -266,10 +302,12 @@ export function GridcraftStudio({
 
       const durationMs = Math.round(performance.now() - startedAt);
 
-      const outputRows = countRowsForFormat(
-        result.output,
-        shareableState.outputFormat,
-      );
+      const inputRows =
+        result.inputRowCount ??
+        countRowsForFormat(shareableState.input, shareableState.inputFormat);
+      const outputRows =
+        result.outputRowCount ??
+        countRowsForFormat(result.output, shareableState.outputFormat);
       const displayOutput =
         outputRows === 0 && !result.output
           ? deriveEmptyOutputFallback({
@@ -285,10 +323,7 @@ export function GridcraftStudio({
         payload: {
           output: displayOutput,
           runSummary: {
-            inputRows: countRowsForFormat(
-              shareableState.input,
-              shareableState.inputFormat,
-            ),
+            inputRows,
             outputRows,
             durationMs,
           },
@@ -356,6 +391,22 @@ export function GridcraftStudio({
     [],
   );
 
+  const handleCopyWorkspaceLink = useCallback(async () => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is not available in this browser.");
+      }
+
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      window.setTimeout(() => {
+        setLinkCopied(false);
+      }, 2000);
+    } catch {
+      setLinkCopied(false);
+    }
+  }, []);
+
   const handleCopy = useCallback(async () => {
     if (!state.execution.output) {
       return;
@@ -384,13 +435,12 @@ export function GridcraftStudio({
       return;
     }
 
-    const format = getFormatById(state.outputFormat);
+    const format = getOutputFormatById(state.outputFormat);
     const blob = new Blob([state.execution.output], { type: format.mimeType });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     anchor.href = url;
-    anchor.download = `output_${timestamp}.${format.extension}`;
+    anchor.download = `output.${format.extension}`;
     anchor.click();
     window.setTimeout(() => {
       URL.revokeObjectURL(url);
@@ -406,14 +456,23 @@ export function GridcraftStudio({
         <section className="space-y-5">
           <header className="panel-surface p-5 sm:p-6">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+              <div className="flex flex-col gap-3">
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--foreground)]">
-                  Gridcraft Studio
+                  Mill
                 </h1>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--muted)]">
-                  Paste data, run a command chain, copy or download results. The
-                  URL keeps your workspace state.
+                <p className="max-w-xl text-sm leading-6 text-[color:var(--muted)]">
+                  Paste data, run Miller-style command chains, copy or download
+                  results. The URL saves your workspace. Data is processed on this
+                  server.
                 </p>
+                <button
+                  className="self-start rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-50"
+                  type="button"
+                  onClick={() => void handleCopyWorkspaceLink()}
+                  disabled={isRunning}
+                >
+                  {linkCopied ? "Copied link" : "Copy link"}
+                </button>
               </div>
 
               <div className="w-full shrink-0 sm:max-w-[14rem]">
@@ -457,10 +516,12 @@ export function GridcraftStudio({
           <CommandBar
             command={state.command}
             outputFormat={state.outputFormat}
+            commandInputRef={commandInputRef}
             disabled={isRunning}
             isRunning={isRunning}
             onCommandChange={handleCommandChange}
             onCommandKeyDown={handleCommandKeyDown}
+            onCaptureCommandSelection={captureCommandSelection}
             onOutputFormatChange={handleOutputFormatChange}
             onRun={() => void handleRun()}
           />

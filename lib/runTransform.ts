@@ -5,13 +5,13 @@ import {
   type RunResponse,
 } from "@/lib/apiContract";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 
 export interface RunTransformRequest {
   input: string;
   command: string;
   inputFormat: DataFormatId;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
 }
 
 export interface RunTransformOptions {
@@ -117,11 +117,11 @@ export async function runTransform(
       };
     }
 
+    const data = parsedResponse.data;
+
     return {
-      ...parsedResponse.data,
-      error: parsedResponse.data.error
-        ? sanitizeErrorMessage(parsedResponse.data.error)
-        : null,
+      ...data,
+      error: data.error ? sanitizeErrorMessage(data.error) : null,
       status: response.status,
     };
   } catch (error) {

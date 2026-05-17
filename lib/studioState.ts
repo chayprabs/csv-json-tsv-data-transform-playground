@@ -1,4 +1,4 @@
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 import {
   DEFAULT_EXAMPLE_PRESET,
   EXAMPLE_PRESETS,
@@ -35,7 +35,7 @@ export interface StudioState {
   input: string;
   command: string;
   inputFormat: DataFormatId;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
   selectedPresetId: string;
   isReferenceOpen: boolean;
   execution: ExecutionState;
@@ -52,8 +52,11 @@ type StudioAction =
   | { type: "updateInput"; payload: string }
   | { type: "updateCommand"; payload: string }
   | { type: "updateInputFormat"; payload: DataFormatId }
-  | { type: "updateOutputFormat"; payload: DataFormatId }
-  | { type: "insertOperation"; payload: string }
+  | { type: "updateOutputFormat"; payload: OutputFormatId }
+  | {
+      type: "insertOperation";
+      payload: { text: string; start: number; end: number };
+    }
   | { type: "toggleReference" }
   | { type: "startRun" }
   | {
@@ -269,11 +272,12 @@ export function studioReducer(
       );
 
     case "insertOperation": {
-      const trimmedCommand = state.command.trim();
-      const separator = trimmedCommand.endsWith("then") ? " " : " then ";
-      const nextCommand = trimmedCommand
-        ? `${trimmedCommand}${separator}${action.payload}`
-        : action.payload;
+      const { text, start, end } = action.payload;
+      const len = state.command.length;
+      const safeStart = Math.max(0, Math.min(start, len));
+      const safeEnd = Math.max(safeStart, Math.min(end, len));
+      const nextCommand =
+        state.command.slice(0, safeStart) + text + state.command.slice(safeEnd);
 
       return {
         ...markWorkspaceDirty(
@@ -281,7 +285,7 @@ export function studioReducer(
           { command: nextCommand },
           { resetHistoryNavigation: true },
         ),
-        statusMessage: "Inserted operation starter syntax.",
+        statusMessage: "Inserted operation syntax.",
       };
     }
 
@@ -299,7 +303,7 @@ export function studioReducer(
           status: "running",
         },
         copyStatus: "idle",
-        statusMessage: "Running transformation.",
+        statusMessage: "Running...",
       };
 
     case "runSuccess":

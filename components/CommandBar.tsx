@@ -1,29 +1,35 @@
-import { memo, type KeyboardEvent } from "react";
+import { memo, type Ref, type KeyboardEvent, type LegacyRef } from "react";
 
 import {
-  FORMAT_OPTIONS,
-  isDataFormatId,
-  type DataFormatId,
+  OUTPUT_FORMAT_OPTIONS,
+  isOutputFormatId,
+  type OutputFormatId,
 } from "@/lib/formats";
+
+import { MAX_COMMAND_LENGTH } from "@/lib/validation";
 
 interface CommandBarProps {
   command: string;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
+  commandInputRef: Ref<HTMLInputElement | null>;
   disabled: boolean;
   isRunning: boolean;
   onCommandChange: (value: string) => void;
   onCommandKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onOutputFormatChange: (value: DataFormatId) => void;
+  onCaptureCommandSelection: () => void;
+  onOutputFormatChange: (value: OutputFormatId) => void;
   onRun: () => void;
 }
 
 export const CommandBar = memo(function CommandBar({
   command,
   outputFormat,
+  commandInputRef,
   disabled,
   isRunning,
   onCommandChange,
   onCommandKeyDown,
+  onCaptureCommandSelection,
   onOutputFormatChange,
   onRun,
 }: CommandBarProps) {
@@ -38,13 +44,19 @@ export const CommandBar = memo(function CommandBar({
             Command
           </label>
           <input
+            ref={commandInputRef as LegacyRef<HTMLInputElement>}
             id="transform-command"
             className="mt-2 w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2.5 font-mono text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
             type="text"
             spellCheck={false}
+            maxLength={MAX_COMMAND_LENGTH}
             value={command}
             onChange={(event) => onCommandChange(event.target.value)}
             onKeyDown={onCommandKeyDown}
+            onSelect={onCaptureCommandSelection}
+            onBlur={onCaptureCommandSelection}
+            onKeyUp={onCaptureCommandSelection}
+            onClick={onCaptureCommandSelection}
             placeholder="filter '$age > 30' then cut -f name,age"
             disabled={disabled}
             aria-describedby="command-help"
@@ -54,6 +66,7 @@ export const CommandBar = memo(function CommandBar({
             id="command-help"
           >
             <code>Cmd/Ctrl+Enter</code> runs. Arrow keys browse command history.
+            Max {MAX_COMMAND_LENGTH} characters.
           </p>
         </div>
 
@@ -68,13 +81,13 @@ export const CommandBar = memo(function CommandBar({
               className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
               value={outputFormat}
               onChange={(event) => {
-                if (isDataFormatId(event.target.value)) {
+                if (isOutputFormatId(event.target.value)) {
                   onOutputFormatChange(event.target.value);
                 }
               }}
               disabled={disabled}
             >
-              {FORMAT_OPTIONS.map((format) => (
+              {OUTPUT_FORMAT_OPTIONS.map((format) => (
                 <option key={format.id} value={format.id}>
                   {format.label}
                 </option>

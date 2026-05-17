@@ -8,6 +8,11 @@ export const DATA_FORMAT_IDS = [
 
 export type DataFormatId = (typeof DATA_FORMAT_IDS)[number];
 
+/** DKVP is input-only in v1 (PRD). */
+export const OUTPUT_FORMAT_IDS = ["csv", "tsv", "json", "ndjson"] as const;
+
+export type OutputFormatId = (typeof OUTPUT_FORMAT_IDS)[number];
+
 export interface DataFormat {
   id: DataFormatId;
   label: string;
@@ -58,12 +63,22 @@ export const FORMAT_OPTIONS = [
     outputFlag: "--odkvp",
     mimeType: "text/plain",
   },
- ] satisfies ReadonlyArray<DataFormat>;
+] as const satisfies ReadonlyArray<DataFormat>;
+
+export const OUTPUT_FORMAT_OPTIONS = FORMAT_OPTIONS.filter(
+  (format): format is (typeof FORMAT_OPTIONS)[number] & { id: OutputFormatId } =>
+    OUTPUT_FORMAT_IDS.includes(format.id as OutputFormatId),
+);
 
 const SUPPORTED_FORMAT_IDS = new Set<DataFormatId>(DATA_FORMAT_IDS);
+const SUPPORTED_OUTPUT_FORMAT_IDS = new Set<OutputFormatId>(OUTPUT_FORMAT_IDS);
 
 export function isDataFormatId(value: string): value is DataFormatId {
   return SUPPORTED_FORMAT_IDS.has(value as DataFormatId);
+}
+
+export function isOutputFormatId(value: string): value is OutputFormatId {
+  return SUPPORTED_OUTPUT_FORMAT_IDS.has(value as OutputFormatId);
 }
 
 export function getFormatById(id: DataFormatId): DataFormat {
@@ -74,4 +89,16 @@ export function getFormatById(id: DataFormatId): DataFormat {
   }
 
   return format;
+}
+
+export function getOutputFormatById(id: OutputFormatId): DataFormat {
+  return getFormatById(id);
+}
+
+export function coerceOutputFormat(value: string): OutputFormatId {
+  if (isOutputFormatId(value)) {
+    return value;
+  }
+
+  return "csv";
 }

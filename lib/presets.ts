@@ -1,4 +1,4 @@
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 
 export interface ExamplePreset {
   id: string;
@@ -7,7 +7,7 @@ export interface ExamplePreset {
   input: string;
   command: string;
   inputFormat: DataFormatId;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
 }
 
 export const SAMPLE_DATASET = `name,age,dept,salary,score
@@ -34,6 +34,15 @@ delta,7,6
 epsilon,5,9
 `,
     command: "filter '$value > $threshold'",
+    inputFormat: "csv",
+    outputFormat: "csv",
+  },
+  {
+    id: "sort-records",
+    label: "Sort records",
+    description: "Sort rows by a numeric column for quick inspection.",
+    input: SAMPLE_DATASET,
+    command: "sort -n age",
     inputFormat: "csv",
     outputFormat: "csv",
   },

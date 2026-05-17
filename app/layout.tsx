@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gridcraft Studio",
+  title: "Mill",
   description:
-    "A data transformation workspace for command-driven format conversion and record shaping.",
+    "Mill is a browser-based workspace for Miller (mlr) command-driven data transformation.",
 };
 
 export default function RootLayout({
