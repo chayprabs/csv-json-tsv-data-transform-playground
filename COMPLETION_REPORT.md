@@ -26,7 +26,7 @@ Still incomplete: 0
 | Checklist-facing validation copy consistency | The oversize validation response copy needed to align with the final user-facing wording used throughout the app. | Standardized the oversize validation message used by request validation and error responses. | `lib/validation.ts` |
 
 ## What The App Does Right Now
-Gridcraft Studio is a browser-based data transformation workspace built with Next.js. It accepts CSV, TSV, JSON, and NDJSON input; runs command-driven transforms such as `cut`, `filter`, `sort`, `rename`, `stats1`, `head`, `tail`, `count-distinct`, `uniq`, `put`, `reorder`, and chained `then` operations; and renders output as CSV, TSV, JSON, or NDJSON. The app exposes copy/download actions, preset examples, an operations reference panel, command history, row-count and timing summaries, friendly validation errors, shareable URL state restoration, client/server size limits, and a production build that starts cleanly with the bundled native transform engine.
+Mill is a browser-based data transformation workspace built with Next.js. It accepts CSV, TSV, JSON, NDJSON, and DKVP input; runs Miller-style transforms and chained `then` operations; and renders output as CSV, TSV, JSON, or NDJSON. The app exposes copy output, copy link, download as `output.{ext}`, preset examples, a 23-operation reference panel, command history, row-count and timing summaries, shareable LZ-compressed URL state, client/server limits, API rate limiting and LRU caching, and a production build with the bundled native transform engine.
 
 Verified results from this audit included:
 - `npx tsc --noEmit`: pass
