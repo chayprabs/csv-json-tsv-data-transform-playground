@@ -24,7 +24,7 @@ export const VirtualizedOutput = memo(function VirtualizedOutput({
   if (lines.length <= MAX_STATIC_LINE_COUNT) {
     return (
       <pre
-        className="min-h-[18rem] overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-[#13221c] px-4 py-4 font-mono text-sm leading-6 text-[#e8f5ef]"
+        className="min-h-[18rem] overflow-x-auto rounded-lg border border-[color:var(--border)] bg-stone-900 px-3 py-3 font-mono text-sm leading-6 text-stone-100"
         tabIndex={0}
         aria-label="Transformation output"
       >
@@ -46,7 +46,7 @@ export const VirtualizedOutput = memo(function VirtualizedOutput({
 
   return (
     <div
-      className="min-h-[18rem] overflow-auto rounded-2xl border border-[color:var(--border)] bg-[#13221c] font-mono text-sm leading-6 text-[#e8f5ef]"
+      className="min-h-[18rem] overflow-auto rounded-lg border border-[color:var(--border)] bg-stone-900 font-mono text-sm leading-6 text-stone-100"
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
       style={{ height: `${VIEWPORT_HEIGHT_PX}px` }}
       tabIndex={0}

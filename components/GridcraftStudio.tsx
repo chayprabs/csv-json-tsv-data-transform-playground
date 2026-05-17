@@ -39,11 +39,9 @@ const OperationsReference = dynamic(
     ),
   {
     loading: () => (
-      <aside className="panel-surface rounded-3xl p-5 sm:p-6">
-        <h2 className="text-lg font-semibold">Operations reference</h2>
-        <p className="mt-2 text-sm text-[color:var(--muted)]">
-          Loading the operation catalog...
-        </p>
+      <aside className="panel-surface p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Operations</h2>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">Loading…</p>
       </aside>
     ),
   },
@@ -57,17 +55,16 @@ function CollapsedOperationsReference({
   onOpen: () => void;
 }) {
   return (
-    <aside className="panel-surface rounded-3xl p-5 sm:p-6">
+    <aside className="panel-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Operations reference</h2>
+          <h2 className="text-base font-semibold">Operations</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Open the full operation catalog when you need starter syntax or a
-            quick reminder.
+            Open the list to insert example commands.
           </p>
         </div>
         <button
-          className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
           type="button"
           onClick={onOpen}
           disabled={disabled}
@@ -75,9 +72,6 @@ function CollapsedOperationsReference({
           Open
         </button>
       </div>
-      <p className="mt-4 text-sm text-[color:var(--muted)]">
-        Browse the full operations catalog on demand.
-      </p>
     </aside>
   );
 }
@@ -405,106 +399,100 @@ export function GridcraftStudio({
 
   return (
     <main
-      className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8"
+      className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6"
       id="main-content"
     >
-      <div className="rounded-[2rem] border border-white/60 bg-white/40 p-4 backdrop-blur sm:p-6 lg:p-8">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <section className="space-y-6">
-            <header className="panel-surface rounded-3xl p-5 sm:p-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div className="max-w-3xl">
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--accent)]">
-                    Gridcraft Studio
-                  </p>
-                  <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                    Transform structured data with reusable command chains
-                  </h1>
-                  <p className="mt-3 text-balance text-sm leading-7 text-[color:var(--muted)] sm:text-base">
-                    Build data transformations across CSV, TSV, JSON, NDJSON,
-                    and DKVP in one workspace. Load examples, run command chains,
-                    and share exact workspace state through the URL.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-                  <label
-                    className="block text-sm font-semibold text-[color:var(--foreground)]"
-                    htmlFor="preset-select"
-                  >
-                    Example presets
-                  </label>
-                  <select
-                    id="preset-select"
-                    className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
-                    value={state.selectedPresetId}
-                    onChange={(event) => handlePresetChange(event.target.value)}
-                    disabled={isRunning}
-                  >
-                    <option value={CUSTOM_PRESET_ID}>Custom workspace</option>
-                    {EXAMPLE_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-3 max-w-sm text-sm leading-6 text-[color:var(--muted)]">
-                    {selectedPreset?.description ??
-                      "Editing a custom input and command combination."}
-                  </p>
-                </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="space-y-5">
+          <header className="panel-surface p-5 sm:p-6">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--foreground)]">
+                  Gridcraft Studio
+                </h1>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--muted)]">
+                  Paste data, run a command chain, copy or download results. The
+                  URL keeps your workspace state.
+                </p>
               </div>
-            </header>
 
-            <InputPanel
-              input={state.input}
-              inputFormat={state.inputFormat}
-              disabled={isRunning}
-              onInputChange={handleInputChange}
-              onInputFormatChange={handleInputFormatChange}
-              onLoadExample={handleLoadExample}
-            />
+              <div className="w-full shrink-0 sm:max-w-[14rem]">
+                <label
+                  className="block text-sm font-medium text-[color:var(--foreground)]"
+                  htmlFor="preset-select"
+                >
+                  Preset
+                </label>
+                <select
+                  id="preset-select"
+                  className="mt-1.5 w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
+                  value={state.selectedPresetId}
+                  onChange={(event) => handlePresetChange(event.target.value)}
+                  disabled={isRunning}
+                >
+                  <option value={CUSTOM_PRESET_ID}>Custom</option>
+                  {EXAMPLE_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs leading-5 text-[color:var(--muted)]">
+                  {selectedPreset?.description ??
+                    "Your own input and command."}
+                </p>
+              </div>
+            </div>
+          </header>
 
-            <CommandBar
-              command={state.command}
-              outputFormat={state.outputFormat}
-              disabled={isRunning}
-              isRunning={isRunning}
-              onCommandChange={handleCommandChange}
-              onCommandKeyDown={handleCommandKeyDown}
-              onOutputFormatChange={handleOutputFormatChange}
-              onRun={() => void handleRun()}
-            />
+          <InputPanel
+            input={state.input}
+            inputFormat={state.inputFormat}
+            disabled={isRunning}
+            onInputChange={handleInputChange}
+            onInputFormatChange={handleInputFormatChange}
+            onLoadExample={handleLoadExample}
+          />
 
-            <OutputPanel
-              output={state.execution.output}
-              error={state.execution.errorMessage}
-              executionStatus={state.execution.status}
-              outputFormat={state.outputFormat}
-              runSummary={state.execution.runSummary}
-              copyStatus={state.copyStatus}
-              statusMessage={state.statusMessage}
-              onCopy={() => void handleCopy()}
-              onDownload={handleDownload}
-              onRunAgain={() => void handleRun()}
-            />
-          </section>
+          <CommandBar
+            command={state.command}
+            outputFormat={state.outputFormat}
+            disabled={isRunning}
+            isRunning={isRunning}
+            onCommandChange={handleCommandChange}
+            onCommandKeyDown={handleCommandKeyDown}
+            onOutputFormatChange={handleOutputFormatChange}
+            onRun={() => void handleRun()}
+          />
 
-          {state.isReferenceOpen ? (
-            <OperationsReference
-              disabled={isRunning}
-              isOpen={state.isReferenceOpen}
-              onToggle={() => dispatch({ type: "toggleReference" })}
-              onInsertOperation={(operation) =>
-                handleOperationInsert(operation.insertText)}
-            />
-          ) : (
-            <CollapsedOperationsReference
-              disabled={isRunning}
-              onOpen={() => dispatch({ type: "toggleReference" })}
-            />
-          )}
-        </div>
+          <OutputPanel
+            output={state.execution.output}
+            error={state.execution.errorMessage}
+            executionStatus={state.execution.status}
+            outputFormat={state.outputFormat}
+            runSummary={state.execution.runSummary}
+            copyStatus={state.copyStatus}
+            statusMessage={state.statusMessage}
+            onCopy={() => void handleCopy()}
+            onDownload={handleDownload}
+            onRunAgain={() => void handleRun()}
+          />
+        </section>
+
+        {state.isReferenceOpen ? (
+          <OperationsReference
+            disabled={isRunning}
+            isOpen={state.isReferenceOpen}
+            onToggle={() => dispatch({ type: "toggleReference" })}
+            onInsertOperation={(operation) =>
+              handleOperationInsert(operation.insertText)}
+          />
+        ) : (
+          <CollapsedOperationsReference
+            disabled={isRunning}
+            onOpen={() => dispatch({ type: "toggleReference" })}
+          />
+        )}
       </div>
     </main>
   );

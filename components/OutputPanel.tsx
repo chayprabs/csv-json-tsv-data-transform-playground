@@ -58,19 +58,19 @@ export const OutputPanel = memo(function OutputPanel({
 
   return (
     <section
-      className="panel-surface rounded-3xl p-5 sm:p-6"
+      className="panel-surface p-5 sm:p-6"
       aria-busy={isRunning}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Output</h2>
+          <h2 className="text-base font-semibold">Output</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             Result rendered as {outputFormatLabel}.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={onCopy}
             disabled={!hasOutput || isRunning}
@@ -78,16 +78,16 @@ export const OutputPanel = memo(function OutputPanel({
             {copyLabel}
           </button>
           <button
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={onDownload}
             disabled={!hasOutput || isRunning}
           >
-            Download as file
+            Download
           </button>
           {shouldShowRetry ? (
             <button
-              className="rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--accent-strong)]"
+              className="rounded-lg bg-[color:var(--accent)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[color:var(--accent-strong)]"
               type="button"
               onClick={onRunAgain}
             >
@@ -99,7 +99,7 @@ export const OutputPanel = memo(function OutputPanel({
 
       {error ? (
         <div
-          className="mt-4 rounded-2xl border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-4 py-3 font-mono text-sm leading-6 text-[color:var(--danger)]"
+          className="mt-4 rounded-lg border border-[color:var(--danger)]/40 bg-red-50 px-3 py-2.5 font-mono text-sm leading-6 text-[color:var(--danger)]"
           role="alert"
           aria-live="assertive"
         >
@@ -113,7 +113,7 @@ export const OutputPanel = memo(function OutputPanel({
 
       <div className="mt-4 space-y-3">
         {isEmptyResult ? (
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--muted)]">
+          <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--muted)]">
             Transformation returned 0 rows.
           </div>
         ) : null}
@@ -121,7 +121,7 @@ export const OutputPanel = memo(function OutputPanel({
         <VirtualizedOutput text={outputText} />
 
         {runSummary ? (
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--muted)]">
+          <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--muted)]">
             <p>
               Input: {runSummary.inputRows} rows -&gt; Output:{" "}
               {runSummary.outputRows} rows

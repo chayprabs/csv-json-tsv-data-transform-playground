@@ -16,16 +16,16 @@ export const OperationsReference = memo(function OperationsReference({
   onInsertOperation,
 }: OperationsReferenceProps) {
   return (
-    <aside className="panel-surface rounded-3xl p-5 sm:p-6">
+    <aside className="panel-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Operations reference</h2>
+          <h2 className="text-base font-semibold">Operations</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Click any operation to drop its starter syntax into the command bar.
+            Click to insert into the command bar.
           </p>
         </div>
         <button
-          className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
           type="button"
           onClick={onToggle}
           aria-expanded={isOpen}
@@ -44,7 +44,7 @@ export const OperationsReference = memo(function OperationsReference({
           {OPERATIONS.map((operation) => (
             <button
               key={operation.name}
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 text-left transition hover:border-[color:var(--accent)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-3 text-left transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
               onClick={() => onInsertOperation(operation)}
               disabled={disabled}
@@ -57,7 +57,7 @@ export const OperationsReference = memo(function OperationsReference({
                   <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
                     {operation.description}
                   </p>
-                  <p className="mt-3 font-mono text-xs leading-5 text-[color:var(--accent-strong)]">
+                  <p className="mt-2 font-mono text-xs text-[color:var(--accent-strong)]">
                     {operation.example}
                   </p>
                   {operation.supportNote ? (
