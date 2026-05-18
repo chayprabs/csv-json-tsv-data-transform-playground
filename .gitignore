@@ -24,3 +24,6 @@ next-env.d.ts
 playwright-report
 test-results
 audit-home.png
+
+# Local product docs (do not commit)
+csv-json-tsv-data-transform-playground.pdf
