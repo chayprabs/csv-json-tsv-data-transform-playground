@@ -1,3 +1,8 @@
+import {
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+  INPUT_LARGE_SLOW_MESSAGE,
+} from "@/lib/millConstants";
+
 export const MAX_INPUT_BYTES = 10 * 1024 * 1024;
 export const INPUT_WARNING_BYTES = 8 * 1024 * 1024;
 export const MAX_COMMAND_LENGTH = 1000;
@@ -44,7 +49,7 @@ export function validateRunRequest({
   if (getInputSizeInBytes(input) > MAX_INPUT_BYTES) {
     return {
       code: "INPUT_TOO_LARGE",
-      message: "Input exceeds the 10 MB limit",
+      message: INPUT_EXCEEDS_LIMIT_MESSAGE,
     };
   }
 
@@ -61,7 +66,7 @@ export function validateRunRequest({
 export function getInputLargeSlowWarning(input: string): string | null {
   const bytes = getInputSizeInBytes(input);
   if (bytes > INPUT_WARNING_BYTES && bytes <= MAX_INPUT_BYTES) {
-    return "Input is large and may be slow";
+    return INPUT_LARGE_SLOW_MESSAGE;
   }
 
   return null;

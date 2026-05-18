@@ -1,6 +1,11 @@
 import {
+  ENGINE_UNAVAILABLE_MESSAGE,
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+  INPUT_LARGE_SLOW_MESSAGE,
   POLICY_BLOCKED_MESSAGE,
   RATE_LIMIT_MESSAGE,
+  REQUEST_CANCELLED_MESSAGE,
+  TRANSFORMATION_TIMEOUT_MESSAGE,
 } from "@/lib/millConstants";
 
 const MAX_CLIENT_ERROR_LENGTH = 500;
@@ -11,9 +16,12 @@ const PRESERVE_VERBATIM = new Set([
   POLICY_BLOCKED_MESSAGE,
   "Please paste some data",
   "Please enter a transformation command",
-  "Input exceeds the 10 MB limit",
-  "Input is large and may be slow",
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+  INPUT_LARGE_SLOW_MESSAGE,
   "Command exceeds the 1000 character limit",
+  TRANSFORMATION_TIMEOUT_MESSAGE,
+  REQUEST_CANCELLED_MESSAGE,
+  ENGINE_UNAVAILABLE_MESSAGE,
 ]);
 const ENGINE_PREFIX_PATTERN = /^[a-z][a-z0-9-]{1,32}:\s*/i;
 const STACK_TRACE_PATTERN = /^\s*at\s.+$/;

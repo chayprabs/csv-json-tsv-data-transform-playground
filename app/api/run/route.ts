@@ -15,7 +15,13 @@ import { normalizeCommandArgs } from "@/lib/commandCompatibility";
 import { getCommandPolicyViolation } from "@/lib/commandPolicy";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getFormatById, getOutputFormatById } from "@/lib/formats";
-import { RATE_LIMIT_MESSAGE } from "@/lib/millConstants";
+import {
+  ENGINE_UNAVAILABLE_MESSAGE,
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+  RATE_LIMIT_MESSAGE,
+  REQUEST_CANCELLED_MESSAGE,
+  TRANSFORMATION_TIMEOUT_MESSAGE,
+} from "@/lib/millConstants";
 import { countRowsForFormat } from "@/lib/runMetrics";
 import {
   getCachedRunResult,
@@ -265,7 +271,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 413,
         code: RUN_RESPONSE_CODES.validation,
-        error: "Input exceeds the 10 MB limit",
+        error: INPUT_EXCEEDS_LIMIT_MESSAGE,
       });
     }
 
@@ -316,7 +322,7 @@ export async function POST(request: NextRequest) {
     return createRunResponse({
       status: 413,
       code: RUN_RESPONSE_CODES.validation,
-      error: "Input exceeds the 10 MB limit",
+      error: INPUT_EXCEEDS_LIMIT_MESSAGE,
     });
   }
 
@@ -395,7 +401,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 500,
         code: RUN_RESPONSE_CODES.engineUnavailable,
-        error: "The transformation engine is unavailable on the server.",
+        error: ENGINE_UNAVAILABLE_MESSAGE,
       });
     }
 
@@ -459,7 +465,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 499,
         code: RUN_RESPONSE_CODES.unexpected,
-        error: "The request was cancelled before the transformation completed.",
+        error: REQUEST_CANCELLED_MESSAGE,
       });
     }
 
@@ -470,7 +476,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 504,
         code: RUN_RESPONSE_CODES.timedOut,
-        error: "The transformation timed out after 10 seconds.",
+        error: TRANSFORMATION_TIMEOUT_MESSAGE,
       });
     }
 
