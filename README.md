@@ -71,7 +71,9 @@ npm run build
 
 Mill is a **Node 20+** application that **executes a native binary**. Use platforms that allow that (for example **Fly.io**, **Render**, **Railway**, or a **VPS**). **Do not** expect full functionality on **Cloudflare Pages**, **Netlify Edge**, or **Vercel Edge** as the sole runtime for transforms.
 
-Read **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** for reverse-proxy limits, smoke tests, and operations notes.
+At your reverse proxy or load balancer (nginx, Caddy, Traefik, or the platform edge), the product spec suggests **additional** limits on top of the in-app rate limiter: on the order of **100 requests per minute per IP** (all routes), **200 concurrent connections**, and **30 second** connection timeouts.
+
+Read **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** for build steps, smoke checks, and operations details.
 
 ---
 
