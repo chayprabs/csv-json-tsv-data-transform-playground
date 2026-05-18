@@ -26,5 +26,9 @@ export default async function Home({ searchParams }: HomeProps) {
     getSearchParamValue(resolvedSearchParams?.state),
   );
 
-  return <GridcraftStudio initialSharedState={initialSharedState} />;
+  return (
+    <div className="flex flex-1 flex-col">
+      <GridcraftStudio initialSharedState={initialSharedState} />
+    </div>
+  );
 }
