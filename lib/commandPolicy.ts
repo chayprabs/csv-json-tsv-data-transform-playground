@@ -173,10 +173,6 @@ export function getCommandPolicyViolation(
     if (unsupportedOperationReason) {
       return POLICY_BLOCKED_MESSAGE;
     }
-
-    if ((operation === "put" || operation === "filter") && segment.includes("-f")) {
-      return POLICY_BLOCKED_MESSAGE;
-    }
   }
 
   return null;
