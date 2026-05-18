@@ -1,6 +1,9 @@
 import { memo } from "react";
 
 import {
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+} from "@/lib/millConstants";
+import {
   FORMAT_OPTIONS,
   isDataFormatId,
   type DataFormatId,
@@ -54,7 +57,7 @@ export const InputPanel = memo(function InputPanel({
           ) : null}
           {isInputOversize ? (
             <p className="mt-2 text-sm font-medium text-[color:var(--danger)]">
-              Input exceeds the 10 MB limit
+              {INPUT_EXCEEDS_LIMIT_MESSAGE}
             </p>
           ) : null}
         </div>
