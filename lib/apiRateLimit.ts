@@ -39,8 +39,10 @@ if (typeof setInterval !== "undefined") {
   setInterval(pruneStaleRateLimitEntries, 5 * 60_000);
 }
 
+/** PRD §11.1 — x-forwarded-for (first IP), then request.ip, then x-real-ip. */
 export function getClientIpFromRequest(
   forwardedFor: string | null,
+  requestIp: string | null | undefined,
   realIp: string | null,
 ): string {
   if (forwardedFor) {
@@ -48,6 +50,10 @@ export function getClientIpFromRequest(
     if (first) {
       return first;
     }
+  }
+
+  if (requestIp?.trim()) {
+    return requestIp.trim();
   }
 
   if (realIp?.trim()) {

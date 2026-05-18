@@ -29,6 +29,16 @@ At the reverse proxy or platform edge, the PRD recommends additionally:
 
 Configure these in nginx, Caddy, Traefik, Fly.io `[[services.http_checks]]`, Render/Railway dashboards, or your cloud load balancer as appropriate.
 
+## Automated smoke tests
+
+With the production server running (`npm run start`):
+
+```bash
+SMOKE_BASE_URL=http://127.0.0.1:3000 npm run smoke
+```
+
+This runs PRD §18 API checks (validation, policy block, 413, rate limit, and a transform when the engine is available).
+
 ## Smoke checks after deploy
 
 1. Load `/` — default preset appears.

@@ -47,6 +47,13 @@ class RequestBodyTooLargeError extends Error {
 }
 
 function getEngineBinaryPath() {
+  const configured = process.env.ENGINE_BINARY_PATH?.trim();
+  if (configured) {
+    return path.isAbsolute(configured)
+      ? configured
+      : path.join(process.cwd(), configured);
+  }
+
   return path.join(process.cwd(), "bin", ENGINE_NAME);
 }
 
@@ -326,8 +333,14 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const requestIp =
+    typeof (request as NextRequest & { ip?: string }).ip === "string"
+      ? (request as NextRequest & { ip?: string }).ip
+      : null;
+
   const clientIp = getClientIpFromRequest(
     request.headers.get("x-forwarded-for"),
+    requestIp,
     request.headers.get("x-real-ip"),
   );
   const rate = checkRateLimit(clientIp);

@@ -28,6 +28,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "smoke": "node ./scripts/smoke-prd.mjs",
     "postinstall": "node ./scripts/prepare-engine.mjs"
   },
   "dependencies": {

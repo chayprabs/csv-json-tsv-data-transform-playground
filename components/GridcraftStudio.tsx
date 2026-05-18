@@ -134,6 +134,19 @@ export function GridcraftStudio({
     [state.command, state.input, state.inputFormat, state.outputFormat],
   );
 
+  // PRD §10 — address bar and copy link reflect latest workspace edits (debounced).
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextUrl = buildSharedStateUrl("/", shareableState);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (currentUrl !== nextUrl) {
+        router.replace(nextUrl, { scroll: false });
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [router, shareableState]);
+
   const getSessionId = useCallback(() => {
     if (!sessionIdRef.current) {
       sessionIdRef.current = getClientSessionId();

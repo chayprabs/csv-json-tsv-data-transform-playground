@@ -30,3 +30,26 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Miller for engine smoke test
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y miller
+          cp "$(command -v mlr)" bin/transform-engine
+          chmod +x bin/transform-engine
+
+      - name: PRD API smoke tests
+        run: |
+          npm run start &
+          echo $! > .smoke-server.pid
+          npm run smoke
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+          SMOKE_WAIT_MS: "90000"
+
+      - name: Stop smoke server
+        if: always()
+        run: |
+          if [ -f .smoke-server.pid ]; then
+            kill "$(cat .smoke-server.pid)" 2>/dev/null || true
+          fi

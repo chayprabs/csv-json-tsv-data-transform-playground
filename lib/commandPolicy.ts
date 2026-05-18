@@ -8,6 +8,8 @@ const UNSUPPORTED_OPERATION_REASONS: Record<string, string> = {
   tee: "This operation writes side-output files or pipes, which this workspace does not allow.",
   template:
     "This operation requires a server-side template file, which this workspace does not expose.",
+  seqnum:
+    "This operation relies on external sequence state, which this workspace does not expose.",
 };
 
 const BLOCKED_DSL_FUNCTIONS = ["exec", "stat", "system"] as const;
