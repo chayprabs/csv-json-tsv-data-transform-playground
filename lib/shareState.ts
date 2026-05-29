@@ -16,10 +16,6 @@ export interface SharedStudioState {
   outputFormat: OutputFormatId;
 }
 
-interface SearchParamReader {
-  get(name: string): string | null;
-}
-
 interface SerializedSharedStudioState {
   i: string;
   c: string;
@@ -97,8 +93,7 @@ export function encodeSharedState(state: SharedStudioState): string {
     fo: state.outputFormat,
   };
 
-  const jsonPayload = JSON.stringify(serializedState);
-  return compressToEncodedURIComponent(jsonPayload);
+  return compressToEncodedURIComponent(JSON.stringify(serializedState));
 }
 
 export function decodeSharedStateValue(
@@ -124,21 +119,13 @@ export function decodeSharedStateValue(
   }
 }
 
-export function decodeSharedState(
-  searchParams: SearchParamReader,
-): SharedStudioState | null {
-  return decodeSharedStateValue(searchParams.get("state"));
-}
-
 export function isSharedStateUrlTooLong(
   pathname: string,
   state: SharedStudioState,
 ): boolean {
-  const url = `${pathname}?state=${encodeSharedState(state)}`;
-  return url.length > MAX_SHARE_URL_LENGTH;
+  return `${pathname}?state=${encodeSharedState(state)}`.length > MAX_SHARE_URL_LENGTH;
 }
 
-/** Returns a shareable URL, or null when the workspace is too large for the URL bar. */
 export function buildSharedStateUrl(
   pathname: string,
   state: SharedStudioState,

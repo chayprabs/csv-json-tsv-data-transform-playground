@@ -69,8 +69,8 @@ const MILL_PRD_OPERATIONS: Omit<
     insertText: "uniq -f field1",
   },
   {
-    name: "count",
-    description: "Count records, optionally grouped",
+    name: "count-vals",
+    description: "Count values per field (use count-distinct for unique counts)",
     example: "count-vals -f field1",
     insertText: "count-vals -f field1",
   },

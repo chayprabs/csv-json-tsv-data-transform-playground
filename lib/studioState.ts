@@ -60,6 +60,7 @@ type StudioAction =
   | { type: "toggleReference" }
   | { type: "startRun" }
   | { type: "cancelRun" }
+  | { type: "clearOutput" }
   | {
       type: "runSuccess";
       payload: {
@@ -172,7 +173,7 @@ export function createInitialStudioState(
       inputFormat: initialSharedState.inputFormat,
       outputFormat: initialSharedState.outputFormat,
       selectedPresetId: getMatchingPresetId(initialSharedState),
-      isReferenceOpen: false,
+      isReferenceOpen: true,
       execution: createIdleExecutionState(),
       history: createInitialHistoryState(),
       copyStatus: "idle",
@@ -186,7 +187,7 @@ export function createInitialStudioState(
     inputFormat: DEFAULT_EXAMPLE_PRESET.inputFormat,
     outputFormat: DEFAULT_EXAMPLE_PRESET.outputFormat,
     selectedPresetId: DEFAULT_EXAMPLE_PRESET.id,
-    isReferenceOpen: false,
+    isReferenceOpen: true,
     execution: createIdleExecutionState(),
     history: createInitialHistoryState(),
     copyStatus: "idle",
@@ -305,6 +306,14 @@ export function studioReducer(
         },
         copyStatus: "idle",
         statusMessage: "Running...",
+      };
+
+    case "clearOutput":
+      return {
+        ...state,
+        execution: createIdleExecutionState(),
+        copyStatus: "idle",
+        statusMessage: "Output cleared.",
       };
 
     case "cancelRun":

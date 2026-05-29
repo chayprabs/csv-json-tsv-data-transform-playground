@@ -1,11 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
   useMemo,
   useReducer,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -13,10 +15,12 @@ import { useRouter } from "next/navigation";
 import { CommandBar } from "@/components/CommandBar";
 import { InputPanel } from "@/components/InputPanel";
 import { OutputPanel } from "@/components/OutputPanel";
+import { readAutoRunPreference, writeAutoRunPreference } from "@/lib/autoRunPreference";
 import { deriveEmptyOutputFallback } from "@/lib/emptyOutput";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getOutputFormatById } from "@/lib/formats";
 import { getClientSessionId } from "@/lib/clientSession";
+import type { OperationDefinition } from "@/lib/operations";
 import { EXAMPLE_PRESETS } from "@/lib/presets";
 import { countRowsForFormat } from "@/lib/runMetrics";
 import { runTransform } from "@/lib/runTransform";
@@ -36,6 +40,20 @@ import {
   validateRunRequest,
 } from "@/lib/validation";
 
+const OperationsReference = dynamic(
+  () =>
+    import("@/components/OperationsReference").then(
+      (module) => module.OperationsReference,
+    ),
+  {
+    loading: () => (
+      <section className="panel-surface p-5">
+        <p className="text-sm text-[color:var(--muted)]">Loading operations…</p>
+      </section>
+    ),
+  },
+);
+
 interface MillWorkspaceProps {
   initialSharedState: SharedStudioState | null;
 }
@@ -50,8 +68,16 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const latestRequestIdRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
-  const commandInputRef = useRef<HTMLInputElement>(null);
+  const commandInputRef = useRef<HTMLTextAreaElement>(null);
   const commandSelectionRef = useRef({ start: 0, end: 0 });
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [autoRun, setAutoRun] = useState(false);
+  const [prettyPrint, setPrettyPrint] = useState(true);
+  const [tableView, setTableView] = useState(false);
+
+  useEffect(() => {
+    setAutoRun(readAutoRunPreference());
+  }, []);
 
   useEffect(() => {
     if (state.copyStatus === "idle") {
@@ -72,8 +98,8 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   }, []);
 
   const isRunning = state.execution.status === "running";
-  const inputOversize =
-    getInputSizeInBytes(state.input) > MAX_INPUT_BYTES;
+  const inputOversize = getInputSizeInBytes(state.input) > MAX_INPUT_BYTES;
+  const runDisabled = isRunning || inputOversize;
 
   const shareableState = useMemo<SharedStudioState>(
     () => ({
@@ -113,68 +139,6 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     return sessionIdRef.current;
   }, []);
 
-  const handlePresetChange = useCallback((presetId: string) => {
-    if (presetId === CUSTOM_PRESET_ID) {
-      dispatch({ type: "selectCustomWorkspace" });
-      return;
-    }
-
-    const preset = EXAMPLE_PRESETS.find((candidate) => candidate.id === presetId);
-
-    if (!preset) {
-      return;
-    }
-
-    dispatch({
-      type: "applyPreset",
-      payload: preset,
-    });
-  }, []);
-
-  const handleLoadExample = useCallback(() => {
-    dispatch({ type: "loadExampleDataset" });
-  }, []);
-
-  const handleCancel = useCallback(() => {
-    activeRequestControllerRef.current?.abort();
-    activeRequestControllerRef.current = null;
-    dispatch({ type: "cancelRun" });
-  }, []);
-
-  const handleInputChange = useCallback((nextInput: string) => {
-    dispatch({
-      type: "updateInput",
-      payload: nextInput,
-    });
-  }, []);
-
-  const handleCommandChange = useCallback((nextCommand: string) => {
-    dispatch({
-      type: "updateCommand",
-      payload: nextCommand,
-    });
-  }, []);
-
-  const handleInputFormatChange = useCallback(
-    (nextFormat: SharedStudioState["inputFormat"]) => {
-      dispatch({
-        type: "updateInputFormat",
-        payload: nextFormat,
-      });
-    },
-    [],
-  );
-
-  const handleOutputFormatChange = useCallback(
-    (nextFormat: SharedStudioState["outputFormat"]) => {
-      dispatch({
-        type: "updateOutputFormat",
-        payload: nextFormat,
-      });
-    },
-    [],
-  );
-
   const handleRun = useCallback(async () => {
     const validationError = validateRunRequest({
       input: shareableState.input,
@@ -184,9 +148,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     if (validationError) {
       dispatch({
         type: "runFailure",
-        payload: {
-          errorMessage: validationError.message,
-        },
+        payload: { errorMessage: validationError.message },
       });
       return;
     }
@@ -218,15 +180,12 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
       if (result.error) {
         dispatch({
           type: "runFailure",
-          payload: {
-            errorMessage: result.error,
-          },
+          payload: { errorMessage: result.error },
         });
         return;
       }
 
       const durationMs = Math.round(performance.now() - startedAt);
-
       const inputRows =
         result.inputRowCount ??
         countRowsForFormat(shareableState.input, shareableState.inputFormat);
@@ -247,11 +206,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         type: "runSuccess",
         payload: {
           output: displayOutput,
-          runSummary: {
-            inputRows,
-            outputRows,
-            durationMs,
-          },
+          runSummary: { inputRows, outputRows, durationMs },
         },
       });
 
@@ -263,7 +218,10 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         }
       }
     } catch (error) {
-      if (requestController.signal.aborted || requestId !== latestRequestIdRef.current) {
+      if (
+        requestController.signal.aborted ||
+        requestId !== latestRequestIdRef.current
+      ) {
         return;
       }
 
@@ -284,12 +242,32 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   }, [getSessionId, router, shareableState]);
 
   useEffect(() => {
+    if (!autoRun || runDisabled) {
+      return undefined;
+    }
+
+    if (!shareableState.input.trim() || !shareableState.command.trim()) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      void handleRun();
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [autoRun, handleRun, runDisabled, shareableState]);
+
+  useEffect(() => {
     const handleGlobalShortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") {
         return;
       }
 
-      if (isRunning) {
+      if (event.shiftKey) {
+        return;
+      }
+
+      if (runDisabled) {
         event.preventDefault();
         return;
       }
@@ -303,17 +281,107 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     return () => {
       window.removeEventListener("keydown", handleGlobalShortcut);
     };
-  }, [handleRun, isRunning]);
+  }, [handleRun, runDisabled]);
+
+  const handlePresetChange = useCallback((presetId: string) => {
+    if (presetId === CUSTOM_PRESET_ID) {
+      dispatch({ type: "selectCustomWorkspace" });
+      return;
+    }
+
+    const preset = EXAMPLE_PRESETS.find((candidate) => candidate.id === presetId);
+
+    if (preset) {
+      dispatch({ type: "applyPreset", payload: preset });
+    }
+  }, []);
+
+  const handleCopyWorkspaceLink = useCallback(async () => {
+    if (shareUrlTooLong) {
+      dispatch({
+        type: "runFailure",
+        payload: {
+          errorMessage:
+            "Workspace is too large to share in the URL. Save your data locally.",
+        },
+      });
+      return;
+    }
+
+    try {
+      const path = buildSharedStateUrl("/", shareableState);
+
+      if (!path) {
+        throw new Error("Unable to build a shareable link.");
+      }
+
+      const fullUrl =
+        path === "/"
+          ? `${window.location.origin}/`
+          : `${window.location.origin}${path}`;
+
+      await navigator.clipboard.writeText(fullUrl);
+      setLinkCopied(true);
+      dispatch({
+        type: "setCopyStatus",
+        payload: "copied",
+      });
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setLinkCopied(false);
+      dispatch({
+        type: "runFailure",
+        payload: { errorMessage: "Could not copy link to the clipboard." },
+      });
+    }
+  }, [shareUrlTooLong, shareableState]);
+
+  const handleOperationInsert = useCallback((operation: OperationDefinition) => {
+    const el = commandInputRef.current;
+    let start = commandSelectionRef.current.start;
+    let end = commandSelectionRef.current.end;
+
+    if (
+      document.activeElement === el &&
+      el &&
+      typeof el.selectionStart === "number"
+    ) {
+      start = el.selectionStart;
+      end = el.selectionEnd ?? el.selectionStart;
+    }
+
+    dispatch({
+      type: "insertOperation",
+      payload: { text: operation.insertText, start, end },
+    });
+
+    queueMicrotask(() => {
+      el?.focus();
+      const pos = start + operation.insertText.length;
+      el?.setSelectionRange(pos, pos);
+      commandSelectionRef.current = { start: pos, end: pos };
+    });
+  }, []);
+
+  const captureCommandSelection = useCallback(() => {
+    const el = commandInputRef.current;
+    if (el && typeof el.selectionStart === "number") {
+      commandSelectionRef.current = {
+        start: el.selectionStart,
+        end: el.selectionEnd ?? el.selectionStart,
+      };
+    }
+  }, []);
 
   const handleCommandKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "ArrowUp") {
+    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "ArrowUp" && !event.shiftKey) {
         event.preventDefault();
         dispatch({ type: "historyUp" });
         return;
       }
 
-      if (event.key === "ArrowDown") {
+      if (event.key === "ArrowDown" && !event.shiftKey) {
         event.preventDefault();
         dispatch({ type: "historyDown" });
       }
@@ -321,45 +389,10 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     [],
   );
 
-  const handleCopy = useCallback(async () => {
-    if (!state.execution.output) {
-      return;
-    }
-
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard access is not available in this browser.");
-      }
-
-      await navigator.clipboard.writeText(state.execution.output);
-      dispatch({
-        type: "setCopyStatus",
-        payload: "copied",
-      });
-    } catch {
-      dispatch({
-        type: "setCopyStatus",
-        payload: "failed",
-      });
-    }
-  }, [state.execution.output]);
-
-  const handleDownload = useCallback(() => {
-    if (!state.execution.output) {
-      return;
-    }
-
-    const format = getOutputFormatById(state.outputFormat);
-    const blob = new Blob([state.execution.output], { type: format.mimeType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `output.${format.extension}`;
-    anchor.click();
-    window.setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 0);
-  }, [state.execution.output, state.outputFormat]);
+  const handleAutoRunChange = useCallback((enabled: boolean) => {
+    setAutoRun(enabled);
+    writeAutoRunPreference(enabled);
+  }, []);
 
   return (
     <main
@@ -376,20 +409,32 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         </p>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-        <label
-          className="sr-only"
-          htmlFor="preset-select"
-        >
-          Example preset
-        </label>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-50"
+            type="button"
+            onClick={() => void handleCopyWorkspaceLink()}
+            disabled={runDisabled || shareUrlTooLong}
+          >
+            {linkCopied ? "Link copied" : "Copy link"}
+          </button>
+          <button
+            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)]"
+            type="button"
+            onClick={() => dispatch({ type: "toggleReference" })}
+            disabled={isRunning}
+            aria-expanded={state.isReferenceOpen}
+          >
+            {state.isReferenceOpen ? "Hide commands" : "Miller commands"}
+          </button>
+        </div>
         <select
-          id="preset-select"
-          className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
+          className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
           value={state.selectedPresetId}
           onChange={(event) => handlePresetChange(event.target.value)}
-          disabled={isRunning || inputOversize}
-          aria-label="Load an example preset"
+          disabled={runDisabled}
+          aria-label="Example preset"
         >
           <option value={CUSTOM_PRESET_ID}>Custom workspace</option>
           {EXAMPLE_PRESETS.map((preset) => (
@@ -404,33 +449,49 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         <InputPanel
           input={state.input}
           inputFormat={state.inputFormat}
-          disabled={isRunning || inputOversize}
-          onInputChange={handleInputChange}
-          onInputFormatChange={handleInputFormatChange}
-          onLoadExample={handleLoadExample}
+          disabled={runDisabled}
+          onInputChange={(value) =>
+            dispatch({ type: "updateInput", payload: value })
+          }
+          onInputFormatChange={(format) =>
+            dispatch({ type: "updateInputFormat", payload: format })
+          }
+          onLoadExample={() => dispatch({ type: "loadExampleDataset" })}
+          onClear={() => dispatch({ type: "updateInput", payload: "" })}
         />
 
         <CommandBar
           command={state.command}
           outputFormat={state.outputFormat}
           commandInputRef={commandInputRef}
-          disabled={isRunning}
+          disabled={runDisabled}
           isRunning={isRunning}
-          onCommandChange={handleCommandChange}
+          autoRun={autoRun}
+          onAutoRunChange={handleAutoRunChange}
+          onCommandChange={(value) =>
+            dispatch({ type: "updateCommand", payload: value })
+          }
           onCommandKeyDown={handleCommandKeyDown}
-          onCaptureCommandSelection={() => {
-            const el = commandInputRef.current;
-            if (el && typeof el.selectionStart === "number") {
-              commandSelectionRef.current = {
-                start: el.selectionStart,
-                end: el.selectionEnd ?? el.selectionStart,
-              };
-            }
-          }}
-          onOutputFormatChange={handleOutputFormatChange}
+          onCaptureCommandSelection={captureCommandSelection}
+          onOutputFormatChange={(format) =>
+            dispatch({ type: "updateOutputFormat", payload: format })
+          }
           onRun={() => void handleRun()}
-          onCancel={handleCancel}
+          onCancel={() => {
+            activeRequestControllerRef.current?.abort();
+            activeRequestControllerRef.current = null;
+            dispatch({ type: "cancelRun" });
+          }}
         />
+
+        {state.isReferenceOpen ? (
+          <OperationsReference
+            disabled={runDisabled}
+            isOpen={state.isReferenceOpen}
+            onToggle={() => dispatch({ type: "toggleReference" })}
+            onInsertOperation={handleOperationInsert}
+          />
+        ) : null}
 
         <OutputPanel
           output={state.execution.output}
@@ -440,8 +501,39 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
           runSummary={state.execution.runSummary}
           copyStatus={state.copyStatus}
           statusMessage={state.statusMessage}
-          onCopy={() => void handleCopy()}
-          onDownload={handleDownload}
+          prettyPrint={prettyPrint}
+          tableView={tableView}
+          onPrettyPrintChange={setPrettyPrint}
+          onTableViewChange={setTableView}
+          onCopy={async () => {
+            if (!state.execution.output) {
+              return;
+            }
+
+            try {
+              await navigator.clipboard.writeText(state.execution.output);
+              dispatch({ type: "setCopyStatus", payload: "copied" });
+            } catch {
+              dispatch({ type: "setCopyStatus", payload: "failed" });
+            }
+          }}
+          onDownload={() => {
+            if (!state.execution.output) {
+              return;
+            }
+
+            const format = getOutputFormatById(state.outputFormat);
+            const blob = new Blob([state.execution.output], {
+              type: format.mimeType,
+            });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `output.${format.extension}`;
+            anchor.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+          }}
+          onClear={() => dispatch({ type: "clearOutput" })}
           onRunAgain={() => void handleRun()}
         />
       </div>

@@ -90,6 +90,45 @@ Sales,110,116,123
     outputFormat: "csv",
   },
   {
+    id: "ndjson-filter",
+    label: "Filter NDJSON log lines",
+    description: "Keep JSON Lines events above a status code threshold.",
+    input: `{"level":"info","status":200,"path":"/api/health"}
+{"level":"warn","status":404,"path":"/missing"}
+{"level":"error","status":500,"path":"/api/run"}
+{"level":"info","status":201,"path":"/api/run"}
+`,
+    command: "filter '$status >= 400'",
+    inputFormat: "ndjson",
+    outputFormat: "ndjson",
+  },
+  {
+    id: "tsv-sort",
+    label: "Sort TSV by column",
+    description: "Sort tab-separated values by a numeric score column.",
+    input: `name\tscore
+alpha\t12
+beta\t31
+gamma\t18
+`,
+    command: "sort -nr score",
+    inputFormat: "tsv",
+    outputFormat: "tsv",
+  },
+  {
+    id: "json-cut",
+    label: "JSON array — select fields",
+    description: "Trim an array of objects to specific keys.",
+    input: `[
+  {"id": 1, "name": "Alice", "role": "admin", "active": true},
+  {"id": 2, "name": "Bob", "role": "user", "active": false}
+]
+`,
+    command: "cut -f name,role",
+    inputFormat: "json",
+    outputFormat: "json",
+  },
+  {
     id: "uniq-deduplicate",
     label: "Deduplicate rows",
     description: "Collapses repeated records down to a single row by email.",

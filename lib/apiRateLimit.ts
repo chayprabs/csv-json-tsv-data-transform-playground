@@ -3,15 +3,15 @@ const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 30;
 
-export function checkRateLimit(ip: string): {
+export function checkRateLimit(rateLimitKey: string): {
   allowed: boolean;
   retryAfter: number;
 } {
   const now = Date.now();
-  const record = rateLimitMap.get(ip);
+  const record = rateLimitMap.get(rateLimitKey);
 
   if (!record || now - record.windowStart > WINDOW_MS) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now });
+    rateLimitMap.set(rateLimitKey, { count: 1, windowStart: now });
     return { allowed: true, retryAfter: 0 };
   }
 
@@ -26,11 +26,16 @@ export function checkRateLimit(ip: string): {
   return { allowed: true, retryAfter: 0 };
 }
 
+export function buildRateLimitKey(ip: string, sessionId: string | null): string {
+  const session = sessionId?.trim() || "anonymous";
+  return `${ip}:${session}`;
+}
+
 export function pruneStaleRateLimitEntries() {
   const now = Date.now();
-  for (const [ip, record] of rateLimitMap) {
+  for (const [key, record] of rateLimitMap) {
     if (now - record.windowStart > WINDOW_MS * 2) {
-      rateLimitMap.delete(ip);
+      rateLimitMap.delete(key);
     }
   }
 }

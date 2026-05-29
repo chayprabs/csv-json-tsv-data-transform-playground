@@ -47,8 +47,8 @@ npm run dev
 
 Open the URL shown in the terminal (usually `http://localhost:3000`).
 
-- **`npm install`** runs **`postinstall`** → `scripts/prepare-engine.mjs` → prepares **`bin/transform-engine`** (Miller).
-- If the engine is missing, set **`ENGINE_BINARY_PATH`** to your Miller-compatible binary, then run `npm install` again (see [Configuration](#configuration)).
+- **`npm install`** runs **`postinstall`** → `scripts/prepare-engine.mjs` → copies Miller from **`ENGINE_BINARY_PATH`**, from **`mlr` on your PATH**, or from a single file in `bin/`.
+- If the engine is missing, install [Miller](https://miller.readthedocs.io/) (`apt install miller` on Debian/Ubuntu) or set **`ENGINE_BINARY_PATH`**, then run `npm install` again.
 
 **Production-style run:**
 
@@ -105,7 +105,7 @@ Key PRD-aligned limits (see code for exact enforcement):
 | `app/page.tsx` | Studio entry; restores `?state=` |
 | `app/api/run/route.ts` | **Mill** execution API: body gate, Zod validation, rate limit, LRU cache, tokenise, policy, **`execa`** with `env: {}` |
 | `middleware.ts` | **CORS** for `/api/run` only (`MILL_ALLOWED_ORIGIN` in production) |
-| `components/MillWorkspace.tsx` | Main UI orchestration (input, command, run, output) |
+| `components/GridcraftStudio.tsx` | Main UI orchestration (filename kept from the internal layout spec) |
 | `components/InputPanel.tsx` | Input, format, byte stats, warnings |
 | `components/CommandBar.tsx` | Command, output format, run, shortcuts |
 | `components/OutputPanel.tsx` | Output, errors, metrics, copy, download |

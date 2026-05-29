@@ -11,11 +11,13 @@ import { MAX_COMMAND_LENGTH } from "@/lib/validation";
 interface CommandBarProps {
   command: string;
   outputFormat: OutputFormatId;
-  commandInputRef: Ref<HTMLInputElement | null>;
+  commandInputRef: Ref<HTMLTextAreaElement | null>;
   disabled: boolean;
   isRunning: boolean;
+  autoRun: boolean;
+  onAutoRunChange: (enabled: boolean) => void;
   onCommandChange: (value: string) => void;
-  onCommandKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onCommandKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onCaptureCommandSelection: () => void;
   onOutputFormatChange: (value: OutputFormatId) => void;
   onRun: () => void;
@@ -28,6 +30,8 @@ export const CommandBar = memo(function CommandBar({
   commandInputRef,
   disabled,
   isRunning,
+  autoRun,
+  onAutoRunChange,
   onCommandChange,
   onCommandKeyDown,
   onCaptureCommandSelection,
@@ -37,7 +41,7 @@ export const CommandBar = memo(function CommandBar({
 }: CommandBarProps) {
   return (
     <section className="panel-surface p-5 sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+      <div className="flex flex-col gap-4">
         <div className="flex-1">
           <label
             className="block text-sm font-medium text-[color:var(--foreground)]"
@@ -45,11 +49,11 @@ export const CommandBar = memo(function CommandBar({
           >
             Command
           </label>
-          <input
-            ref={commandInputRef as LegacyRef<HTMLInputElement>}
+          <textarea
+            ref={commandInputRef as LegacyRef<HTMLTextAreaElement>}
             id="transform-command"
-            className="mt-2 w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2.5 font-mono text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
-            type="text"
+            rows={2}
+            className="mt-2 w-full resize-y rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2.5 font-mono text-sm leading-6 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
             spellCheck={false}
             maxLength={MAX_COMMAND_LENGTH}
             value={command}
@@ -57,7 +61,6 @@ export const CommandBar = memo(function CommandBar({
             onKeyDown={onCommandKeyDown}
             onSelect={onCaptureCommandSelection}
             onBlur={onCaptureCommandSelection}
-            onKeyUp={onCaptureCommandSelection}
             onClick={onCaptureCommandSelection}
             placeholder="filter '$age > 30' then cut -f name,age"
             disabled={disabled}
@@ -67,12 +70,22 @@ export const CommandBar = memo(function CommandBar({
             className="mt-2 text-xs text-[color:var(--muted)]"
             id="command-help"
           >
-            <code>Cmd/Ctrl+Enter</code> runs. Arrow keys browse command history.
-            Max {MAX_COMMAND_LENGTH} characters.
+            <code>Cmd/Ctrl+Enter</code> runs. <code>Shift+Enter</code> adds a
+            line. Arrow keys browse history. Max {MAX_COMMAND_LENGTH} characters.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--muted)]">
+            <input
+              checked={autoRun}
+              className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)]"
+              type="checkbox"
+              onChange={(event) => onAutoRunChange(event.target.checked)}
+              disabled={disabled}
+            />
+            Auto-run
+          </label>
           <label
             className="flex items-center gap-2 text-sm font-medium text-[color:var(--muted)]"
             htmlFor="output-format"
@@ -80,7 +93,7 @@ export const CommandBar = memo(function CommandBar({
             <span>Output</span>
             <select
               id="output-format"
-              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
+              className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
               value={outputFormat}
               onChange={(event) => {
                 if (isOutputFormatId(event.target.value)) {

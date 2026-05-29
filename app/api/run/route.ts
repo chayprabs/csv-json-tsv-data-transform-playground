@@ -6,11 +6,16 @@ import { execa } from "execa";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  CLIENT_SESSION_HEADER,
   RUN_RESPONSE_CODES,
   runRequestSchema,
   type RunResponseCode,
 } from "@/lib/apiContract";
-import { checkRateLimit, getClientIpFromRequest } from "@/lib/apiRateLimit";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  getClientIpFromRequest,
+} from "@/lib/apiRateLimit";
 import { normalizeCommandArgs } from "@/lib/commandCompatibility";
 import { getCommandPolicyViolation } from "@/lib/commandPolicy";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
@@ -343,7 +348,9 @@ export async function POST(request: NextRequest) {
     requestIp,
     request.headers.get("x-real-ip"),
   );
-  const rate = checkRateLimit(clientIp);
+  const rate = checkRateLimit(
+    buildRateLimitKey(clientIp, request.headers.get(CLIENT_SESSION_HEADER)),
+  );
 
   if (!rate.allowed) {
     return createRunResponse({

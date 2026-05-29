@@ -175,6 +175,7 @@ export function getCommandPolicyViolation(
     if (!operation) {
       continue;
     }
+
     const unsupportedOperationReason =
       getUnsupportedOperationReason(operation);
 

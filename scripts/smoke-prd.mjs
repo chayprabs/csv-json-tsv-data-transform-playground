@@ -183,6 +183,32 @@ async function testRateLimit() {
   pass("rate limit (429, Retry-After, PRD copy)");
 }
 
+
+async function testHealth() {
+  const response = await fetch(`${BASE_URL}/api/health`);
+  const data = await readJson(response);
+  if (response.status !== 200 || data.ok !== true) {
+    fail(`health check failed: ${response.status}`);
+    return;
+  }
+  pass("health endpoint (200, engine ok)");
+}
+
+async function testFilePathPolicy() {
+  const response = await postRun({
+    input: SAMPLE_CSV,
+    command: "cat ./secrets.csv",
+    inputFormat: "csv",
+    outputFormat: "csv",
+  });
+  const data = await readJson(response);
+  if (response.status !== 400 || data.error !== POLICY_MESSAGE) {
+    fail(`file path policy expected 400, got ${response.status}`);
+    return;
+  }
+  pass("file path policy (400)");
+}
+
 async function testSuccessfulTransform() {
   const response = await postRun({
     input: SAMPLE_CSV,
@@ -230,6 +256,8 @@ async function main() {
   await testEmptyInputValidation();
   await testPolicyBlock();
   await testSuccessfulTransform();
+  await testHealth();
+  await testFilePathPolicy();
   await testOversizeBody();
   await testRateLimit();
 
