@@ -2,7 +2,7 @@
   "name": "mill",
   "version": "0.1.0",
   "private": true,
-  "description": "Mill \u2014 browser-based Miller (mlr) workspace: CSV, TSV, JSON, NDJSON, DKVP transforms, URL sharing, Next.js.",
+  "description": "Mill — browser-based Miller (mlr) workspace: CSV, TSV, JSON, NDJSON, DKVP transforms, URL sharing, Next.js.",
   "author": "Mill contributors",
   "keywords": [
     "mill",
@@ -41,7 +41,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "15.5.18",
+    "@next/bundle-analyzer": "^15.5.18",
     "@types/node": "20.17.50",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
