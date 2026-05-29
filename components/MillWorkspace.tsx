@@ -1,13 +1,11 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
   useMemo,
   useReducer,
   useRef,
-  useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -33,57 +31,11 @@ import {
 } from "@/lib/studioState";
 import { validateRunRequest } from "@/lib/validation";
 
-const OperationsReference = dynamic(
-  () =>
-    import("@/components/OperationsReference").then(
-      (module) => module.OperationsReference,
-    ),
-  {
-    loading: () => (
-      <aside className="panel-surface p-5 sm:p-6">
-        <h2 className="text-base font-semibold">Operations</h2>
-        <p className="mt-2 text-sm text-[color:var(--muted)]">Loading…</p>
-      </aside>
-    ),
-  },
-);
-
-function CollapsedOperationsReference({
-  disabled,
-  onOpen,
-}: {
-  disabled: boolean;
-  onOpen: () => void;
-}) {
-  return (
-    <aside className="panel-surface p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold">Operations</h2>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Open the list to insert example commands.
-          </p>
-        </div>
-        <button
-          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-          type="button"
-          onClick={onOpen}
-          disabled={disabled}
-        >
-          Open
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-interface GridcraftStudioProps {
+interface MillWorkspaceProps {
   initialSharedState: SharedStudioState | null;
 }
 
-export function GridcraftStudio({
-  initialSharedState,
-}: GridcraftStudioProps) {
+export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   const router = useRouter();
   const [state, dispatch] = useReducer(
     studioReducer,
@@ -95,7 +47,6 @@ export function GridcraftStudio({
   const sessionIdRef = useRef<string | null>(null);
   const commandInputRef = useRef<HTMLInputElement>(null);
   const commandSelectionRef = useRef({ start: 0, end: 0 });
-  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (state.copyStatus === "idle") {
@@ -117,13 +68,6 @@ export function GridcraftStudio({
 
   const isRunning = state.execution.status === "running";
 
-  const selectedPreset = useMemo(
-    () =>
-      EXAMPLE_PRESETS.find((preset) => preset.id === state.selectedPresetId) ??
-      null,
-    [state.selectedPresetId],
-  );
-
   const shareableState = useMemo<SharedStudioState>(
     () => ({
       input: state.input,
@@ -134,7 +78,6 @@ export function GridcraftStudio({
     [state.command, state.input, state.inputFormat, state.outputFormat],
   );
 
-  // PRD §10 — address bar and copy link reflect latest workspace edits (debounced).
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const nextUrl = buildSharedStateUrl("/", shareableState);
@@ -177,44 +120,11 @@ export function GridcraftStudio({
     dispatch({ type: "loadExampleDataset" });
   }, []);
 
-  const captureCommandSelection = useCallback(() => {
-    const el = commandInputRef.current;
-    if (el && typeof el.selectionStart === "number") {
-      commandSelectionRef.current = {
-        start: el.selectionStart,
-        end: el.selectionEnd ?? el.selectionStart,
-      };
-    }
+  const handleCancel = useCallback(() => {
+    activeRequestControllerRef.current?.abort();
+    activeRequestControllerRef.current = null;
+    dispatch({ type: "cancelRun" });
   }, []);
-
-  const handleOperationInsert = useCallback(
-    (insertText: string) => {
-      const el = commandInputRef.current;
-      let start = commandSelectionRef.current.start;
-      let end = commandSelectionRef.current.end;
-      if (
-        document.activeElement === el &&
-        el &&
-        typeof el.selectionStart === "number"
-      ) {
-        start = el.selectionStart;
-        end = el.selectionEnd ?? el.selectionStart;
-      }
-
-      dispatch({
-        type: "insertOperation",
-        payload: { text: insertText, start, end },
-      });
-
-      queueMicrotask(() => {
-        el?.focus();
-        const pos = start + insertText.length;
-        el?.setSelectionRange(pos, pos);
-        commandSelectionRef.current = { start: pos, end: pos };
-      });
-    },
-    [],
-  );
 
   const handleInputChange = useCallback((nextInput: string) => {
     dispatch({
@@ -354,11 +264,7 @@ export function GridcraftStudio({
         activeRequestControllerRef.current = null;
       }
     }
-  }, [
-    getSessionId,
-    router,
-    shareableState,
-  ]);
+  }, [getSessionId, router, shareableState]);
 
   useEffect(() => {
     const handleGlobalShortcut = (event: KeyboardEvent) => {
@@ -397,28 +303,6 @@ export function GridcraftStudio({
     },
     [],
   );
-
-  const handleCopyWorkspaceLink = useCallback(async () => {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard access is not available in this browser.");
-      }
-
-      const path = buildSharedStateUrl("/", shareableState);
-      const fullUrl =
-        path === "/"
-          ? `${window.location.origin}/`
-          : `${window.location.origin}${path}`;
-
-      await navigator.clipboard.writeText(fullUrl);
-      setLinkCopied(true);
-      window.setTimeout(() => {
-        setLinkCopied(false);
-      }, 2000);
-    } catch {
-      setLinkCopied(false);
-    }
-  }, [shareableState]);
 
   const handleCopy = useCallback(async () => {
     if (!state.execution.output) {
@@ -462,111 +346,77 @@ export function GridcraftStudio({
 
   return (
     <main
-      className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6"
+      className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8"
       id="main-content"
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="space-y-5">
-          <header className="panel-surface p-5 sm:p-6">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex flex-col gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--foreground)]">
-                  Mill
-                </h1>
-                <p className="max-w-xl text-sm leading-6 text-[color:var(--muted)]">
-                  Paste data, run Miller-style command chains, copy or download
-                  results. The URL saves your workspace. Data is processed on this
-                  server.
-                </p>
-                <button
-                  className="self-start rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-50"
-                  type="button"
-                  onClick={() => void handleCopyWorkspaceLink()}
-                  disabled={isRunning}
-                >
-                  {linkCopied ? "Copied link" : "Copy link"}
-                </button>
-              </div>
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <label
+          className="sr-only"
+          htmlFor="preset-select"
+        >
+          Example preset
+        </label>
+        <select
+          id="preset-select"
+          className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
+          value={state.selectedPresetId}
+          onChange={(event) => handlePresetChange(event.target.value)}
+          disabled={isRunning}
+          aria-label="Load an example preset"
+        >
+          <option value={CUSTOM_PRESET_ID}>Custom workspace</option>
+          {EXAMPLE_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-              <div className="w-full shrink-0 sm:max-w-[14rem]">
-                <label
-                  className="block text-sm font-medium text-[color:var(--foreground)]"
-                  htmlFor="preset-select"
-                >
-                  Preset
-                </label>
-                <select
-                  id="preset-select"
-                  className="mt-1.5 w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
-                  value={state.selectedPresetId}
-                  onChange={(event) => handlePresetChange(event.target.value)}
-                  disabled={isRunning}
-                >
-                  <option value={CUSTOM_PRESET_ID}>Custom</option>
-                  {EXAMPLE_PRESETS.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs leading-5 text-[color:var(--muted)]">
-                  {selectedPreset?.description ??
-                    "Your own input and command."}
-                </p>
-              </div>
-            </div>
-          </header>
+      <div className="space-y-5">
+        <InputPanel
+          input={state.input}
+          inputFormat={state.inputFormat}
+          disabled={isRunning}
+          onInputChange={handleInputChange}
+          onInputFormatChange={handleInputFormatChange}
+          onLoadExample={handleLoadExample}
+        />
 
-          <InputPanel
-            input={state.input}
-            inputFormat={state.inputFormat}
-            disabled={isRunning}
-            onInputChange={handleInputChange}
-            onInputFormatChange={handleInputFormatChange}
-            onLoadExample={handleLoadExample}
-          />
+        <CommandBar
+          command={state.command}
+          outputFormat={state.outputFormat}
+          commandInputRef={commandInputRef}
+          disabled={isRunning}
+          isRunning={isRunning}
+          onCommandChange={handleCommandChange}
+          onCommandKeyDown={handleCommandKeyDown}
+          onCaptureCommandSelection={() => {
+            const el = commandInputRef.current;
+            if (el && typeof el.selectionStart === "number") {
+              commandSelectionRef.current = {
+                start: el.selectionStart,
+                end: el.selectionEnd ?? el.selectionStart,
+              };
+            }
+          }}
+          onOutputFormatChange={handleOutputFormatChange}
+          onRun={() => void handleRun()}
+          onCancel={handleCancel}
+        />
 
-          <CommandBar
-            command={state.command}
-            outputFormat={state.outputFormat}
-            commandInputRef={commandInputRef}
-            disabled={isRunning}
-            isRunning={isRunning}
-            onCommandChange={handleCommandChange}
-            onCommandKeyDown={handleCommandKeyDown}
-            onCaptureCommandSelection={captureCommandSelection}
-            onOutputFormatChange={handleOutputFormatChange}
-            onRun={() => void handleRun()}
-          />
-
-          <OutputPanel
-            output={state.execution.output}
-            error={state.execution.errorMessage}
-            executionStatus={state.execution.status}
-            outputFormat={state.outputFormat}
-            runSummary={state.execution.runSummary}
-            copyStatus={state.copyStatus}
-            statusMessage={state.statusMessage}
-            onCopy={() => void handleCopy()}
-            onDownload={handleDownload}
-            onRunAgain={() => void handleRun()}
-          />
-        </section>
-
-        {state.isReferenceOpen ? (
-          <OperationsReference
-            disabled={isRunning}
-            isOpen={state.isReferenceOpen}
-            onToggle={() => dispatch({ type: "toggleReference" })}
-            onInsertOperation={(operation) =>
-              handleOperationInsert(operation.insertText)}
-          />
-        ) : (
-          <CollapsedOperationsReference
-            disabled={isRunning}
-            onOpen={() => dispatch({ type: "toggleReference" })}
-          />
-        )}
+        <OutputPanel
+          output={state.execution.output}
+          error={state.execution.errorMessage}
+          executionStatus={state.execution.status}
+          outputFormat={state.outputFormat}
+          runSummary={state.execution.runSummary}
+          copyStatus={state.copyStatus}
+          statusMessage={state.statusMessage}
+          onCopy={() => void handleCopy()}
+          onDownload={handleDownload}
+          onRunAgain={() => void handleRun()}
+        />
       </div>
     </main>
   );

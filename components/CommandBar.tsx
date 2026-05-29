@@ -19,6 +19,7 @@ interface CommandBarProps {
   onCaptureCommandSelection: () => void;
   onOutputFormatChange: (value: OutputFormatId) => void;
   onRun: () => void;
+  onCancel?: () => void;
 }
 
 export const CommandBar = memo(function CommandBar({
@@ -32,6 +33,7 @@ export const CommandBar = memo(function CommandBar({
   onCaptureCommandSelection,
   onOutputFormatChange,
   onRun,
+  onCancel,
 }: CommandBarProps) {
   return (
     <section className="panel-surface p-5 sm:p-6">
@@ -94,6 +96,15 @@ export const CommandBar = memo(function CommandBar({
               ))}
             </select>
           </label>
+          {isRunning && onCancel ? (
+            <button
+              className="rounded-lg border border-[color:var(--border)] bg-white px-4 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--danger)] hover:text-[color:var(--danger)]"
+              type="button"
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          ) : null}
           <button
             className="rounded-lg bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[color:var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
             type="button"

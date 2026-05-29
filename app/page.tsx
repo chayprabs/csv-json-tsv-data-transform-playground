@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
-import { GridcraftStudio } from "@/components/GridcraftStudio";
+import { MillWorkspace } from "@/components/MillWorkspace";
+import { SeoIntroBar } from "@/components/SeoIntroBar";
 
 import { decodeSharedStateValue } from "@/lib/shareState";
 
@@ -29,21 +30,20 @@ async function StudioPage({ searchParams }: HomeProps) {
   );
 
   return (
-    <div className="flex flex-1 flex-col">
-      <GridcraftStudio initialSharedState={initialSharedState} />
-    </div>
+    <>
+      <SeoIntroBar />
+      <MillWorkspace initialSharedState={initialSharedState} />
+    </>
   );
 }
 
 function StudioFallback() {
   return (
-    <main className="mx-auto min-h-screen max-w-6xl flex-1 px-4 py-8 sm:px-6">
-      <section className="panel-surface p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Mill</h1>
-        <p className="mt-2 text-sm text-[color:var(--muted)]">
-          Preparing the workspace…
-        </p>
-      </section>
+    <main
+      className="mx-auto max-w-5xl flex-1 px-4 py-12 sm:px-6"
+      id="main-content"
+    >
+      <p className="text-sm text-[color:var(--muted)]">Preparing workspace…</p>
     </main>
   );
 }

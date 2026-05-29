@@ -59,6 +59,7 @@ type StudioAction =
     }
   | { type: "toggleReference" }
   | { type: "startRun" }
+  | { type: "cancelRun" }
   | {
       type: "runSuccess";
       payload: {
