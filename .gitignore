@@ -27,3 +27,4 @@ audit-home.png
 
 # Local product docs (do not commit)
 csv-json-tsv-data-transform-playground.pdf
+.smoke-server.pid
