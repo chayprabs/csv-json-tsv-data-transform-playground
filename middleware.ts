@@ -30,6 +30,7 @@ export function middleware(request: NextRequest) {
     cors["Access-Control-Allow-Origin"] = allowOrigin;
     cors["Access-Control-Allow-Methods"] = "POST, OPTIONS";
     cors["Access-Control-Allow-Headers"] = `Content-Type, ${CLIENT_SESSION_HEADER}`;
+    cors["Access-Control-Expose-Headers"] = "Retry-After";
     cors["Access-Control-Max-Age"] = "86400";
   }
 

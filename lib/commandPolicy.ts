@@ -126,11 +126,15 @@ function tokenLooksLikeFilePath(token: string): boolean {
     return true;
   }
 
+  if (token.includes("/") || token.includes("\\")) {
+    return true;
+  }
+
   return false;
 }
 
-function commandContainsTeeVerb(command: string): boolean {
-  return /\btee\b/i.test(command);
+function segmentUsesTeeVerb(segment: string[]): boolean {
+  return segment.some((token) => token.toLowerCase() === "tee");
 }
 
 export function getUnsupportedOperationReason(operation: string): string | null {
@@ -141,9 +145,7 @@ export function getCommandPolicyViolation(
   parsedArgs: string[],
   rawCommand: string,
 ): string | null {
-  if (commandContainsTeeVerb(rawCommand)) {
-    return POLICY_BLOCKED_MESSAGE;
-  }
+  void rawCommand;
 
   for (const token of parsedArgs) {
     if (token === "--from") {
@@ -164,6 +166,10 @@ export function getCommandPolicyViolation(
   const segments = splitCommandSegments(parsedArgs);
 
   for (const segment of segments) {
+    if (segmentUsesTeeVerb(segment)) {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
     const operation = segment[0];
 
     if (!operation) {

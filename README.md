@@ -105,7 +105,7 @@ Key PRD-aligned limits (see code for exact enforcement):
 | `app/page.tsx` | Studio entry; restores `?state=` |
 | `app/api/run/route.ts` | **Mill** execution API: body gate, Zod validation, rate limit, LRU cache, tokenise, policy, **`execa`** with `env: {}` |
 | `middleware.ts` | **CORS** for `/api/run` only (`MILL_ALLOWED_ORIGIN` in production) |
-| `components/GridcraftStudio.tsx` | Main UI orchestration (filename kept from the internal layout spec) |
+| `components/MillWorkspace.tsx` | Main UI orchestration (input, command, run, output) |
 | `components/InputPanel.tsx` | Input, format, byte stats, warnings |
 | `components/CommandBar.tsx` | Command, output format, run, shortcuts |
 | `components/OutputPanel.tsx` | Output, errors, metrics, copy, download |

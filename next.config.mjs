@@ -35,6 +35,7 @@ const nextConfig = {
   experimental: {
     devtoolSegmentExplorer: false,
     browserDebugInfoInTerminal: false,
+    middlewareClientMaxBodySize: "15mb",
   },
   async headers() {
     return [

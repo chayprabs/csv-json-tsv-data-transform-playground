@@ -8,7 +8,8 @@ Mill uses a **server-side** execution route. The browser posts structured JSON t
 
 - `app/layout.tsx` — metadata and shell
 - `app/page.tsx` — entry; restores shared state from the URL
-- `components/GridcraftStudio.tsx` — input, command, formats, presets, history, URL sync, copy link
+- `components/MillWorkspace.tsx` — input, command, formats, presets, history, URL sync
+- `components/SiteHeader.tsx` / `SeoIntroBar.tsx` — top bar and SEO intro strip
 - `components/InputPanel.tsx`, `CommandBar.tsx`, `OutputPanel.tsx`, `OperationsReference.tsx`
 - `middleware.ts` — CORS for `/api/run` only
 

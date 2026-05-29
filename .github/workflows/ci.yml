@@ -46,6 +46,7 @@ jobs:
         env:
           SMOKE_BASE_URL: http://127.0.0.1:3000
           SMOKE_WAIT_MS: "90000"
+          SMOKE_REQUIRE_ENGINE: "1"
 
       - name: Stop smoke server
         if: always()

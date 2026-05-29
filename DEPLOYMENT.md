@@ -50,4 +50,4 @@ This runs PRD §18 API checks (validation, policy block, 413, rate limit, and a 
 
 ## CI
 
-The repository workflow runs `npm ci`, `npm run lint`, `npm audit --audit-level=high`, and `npm run build`.
+The repository workflow runs `npm ci`, `npm run lint`, `npm audit --audit-level=high`, `npm run build`, installs Miller on Ubuntu, starts the production server, and runs `npm run smoke` with `SMOKE_REQUIRE_ENGINE=1`.

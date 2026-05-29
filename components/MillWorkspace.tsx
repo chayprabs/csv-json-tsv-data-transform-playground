@@ -22,6 +22,7 @@ import { countRowsForFormat } from "@/lib/runMetrics";
 import { runTransform } from "@/lib/runTransform";
 import {
   buildSharedStateUrl,
+  isSharedStateUrlTooLong,
   type SharedStudioState,
 } from "@/lib/shareState";
 import {
@@ -29,7 +30,11 @@ import {
   createInitialStudioState,
   studioReducer,
 } from "@/lib/studioState";
-import { validateRunRequest } from "@/lib/validation";
+import {
+  MAX_INPUT_BYTES,
+  getInputSizeInBytes,
+  validateRunRequest,
+} from "@/lib/validation";
 
 interface MillWorkspaceProps {
   initialSharedState: SharedStudioState | null;
@@ -67,6 +72,8 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   }, []);
 
   const isRunning = state.execution.status === "running";
+  const inputOversize =
+    getInputSizeInBytes(state.input) > MAX_INPUT_BYTES;
 
   const shareableState = useMemo<SharedStudioState>(
     () => ({
@@ -78,9 +85,17 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     [state.command, state.input, state.inputFormat, state.outputFormat],
   );
 
+  const shareUrlTooLong = useMemo(
+    () => isSharedStateUrlTooLong("/", shareableState),
+    [shareableState],
+  );
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const nextUrl = buildSharedStateUrl("/", shareableState);
+      if (!nextUrl) {
+        return;
+      }
       const currentUrl = `${window.location.pathname}${window.location.search}`;
       if (currentUrl !== nextUrl) {
         router.replace(nextUrl, { scroll: false });
@@ -241,9 +256,11 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
       });
 
       const nextUrl = buildSharedStateUrl("/", shareableState);
-      const currentUrl = `${window.location.pathname}${window.location.search}`;
-      if (currentUrl !== nextUrl) {
-        router.replace(nextUrl, { scroll: false });
+      if (nextUrl) {
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        if (currentUrl !== nextUrl) {
+          router.replace(nextUrl, { scroll: false });
+        }
       }
     } catch (error) {
       if (requestController.signal.aborted || requestId !== latestRequestIdRef.current) {
@@ -349,6 +366,16 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
       className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8"
       id="main-content"
     >
+      {shareUrlTooLong ? (
+        <p
+          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          role="status"
+        >
+          This workspace is too large to save in the URL. Copy your data locally
+          before leaving the page.
+        </p>
+      ) : null}
+
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         <label
           className="sr-only"
@@ -361,7 +388,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
           className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
           value={state.selectedPresetId}
           onChange={(event) => handlePresetChange(event.target.value)}
-          disabled={isRunning}
+          disabled={isRunning || inputOversize}
           aria-label="Load an example preset"
         >
           <option value={CUSTOM_PRESET_ID}>Custom workspace</option>
@@ -377,7 +404,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         <InputPanel
           input={state.input}
           inputFormat={state.inputFormat}
-          disabled={isRunning}
+          disabled={isRunning || inputOversize}
           onInputChange={handleInputChange}
           onInputFormatChange={handleInputFormatChange}
           onLoadExample={handleLoadExample}

@@ -307,6 +307,14 @@ export function studioReducer(
         statusMessage: "Running...",
       };
 
+    case "cancelRun":
+      return {
+        ...state,
+        execution: createIdleExecutionState(),
+        copyStatus: "idle",
+        statusMessage: "Run cancelled.",
+      };
+
     case "runSuccess":
       return {
         ...state,

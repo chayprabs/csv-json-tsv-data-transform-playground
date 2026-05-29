@@ -193,6 +193,10 @@ async function testSuccessfulTransform() {
   const data = await readJson(response);
 
   if (response.status === 500 && data.code === "ENGINE_UNAVAILABLE") {
+    if (process.env.SMOKE_REQUIRE_ENGINE === "1") {
+      fail("transform failed: engine unavailable but SMOKE_REQUIRE_ENGINE=1");
+      return;
+    }
     pass("transform skipped (engine not installed on this host)");
     return;
   }
@@ -225,9 +229,9 @@ async function main() {
   await waitForServer();
   await testEmptyInputValidation();
   await testPolicyBlock();
+  await testSuccessfulTransform();
   await testOversizeBody();
   await testRateLimit();
-  await testSuccessfulTransform();
 
   if (failures > 0) {
     process.stderr.write(`\n${failures} smoke check(s) failed.\n`);
