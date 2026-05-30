@@ -1,35 +1,26 @@
 import type { Metadata } from "next";
 
+import { SeoIntroBar } from "@/components/SeoIntroBar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: {
-    default: "Mill — Miller (mlr) data transform workspace",
-    template: "%s | Mill",
-  },
+  title: "Mill — Miller (mlr) data transform playground",
   description:
-    "Paste CSV, TSV, JSON, or NDJSON and run Miller (mlr) command chains online. Filter, sort, reshape, and convert tabular data in a simple browser workspace.",
-  openGraph: {
-    title: "Mill — Miller (mlr) data transform workspace",
-    description:
-      "Paste tabular data, run Miller command chains, copy or download results.",
-    type: "website",
-    siteName: "Mill",
-  },
-  twitter: {
-    card: "summary",
-    title: "Mill — Miller (mlr) data transform workspace",
-    description:
-      "Paste tabular data, run Miller command chains, copy or download results.",
-    creator: "@chayprabs",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+    "Paste CSV, TSV, JSON, NDJSON, or DKVP. Run Miller command chains in the browser workspace. Share state by URL.",
+  keywords: [
+    "mill",
+    "miller",
+    "mlr",
+    "csv",
+    "tsv",
+    "json",
+    "ndjson",
+    "data transformation",
+    "playground",
+  ],
 };
 
 export default function RootLayout({
@@ -39,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col bg-white">
+      <body className="flex min-h-screen flex-col">
         <a
           className="skip-link"
           href="#main-content"
@@ -47,6 +38,7 @@ export default function RootLayout({
           Skip to workspace
         </a>
         <SiteHeader />
+        <SeoIntroBar />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
       </body>

@@ -16,6 +16,10 @@ export interface SharedStudioState {
   outputFormat: OutputFormatId;
 }
 
+interface SearchParamReader {
+  get(name: string): string | null;
+}
+
 interface SerializedSharedStudioState {
   i: string;
   c: string;
@@ -93,7 +97,8 @@ export function encodeSharedState(state: SharedStudioState): string {
     fo: state.outputFormat,
   };
 
-  return compressToEncodedURIComponent(JSON.stringify(serializedState));
+  const jsonPayload = JSON.stringify(serializedState);
+  return compressToEncodedURIComponent(jsonPayload);
 }
 
 export function decodeSharedStateValue(
@@ -119,20 +124,25 @@ export function decodeSharedStateValue(
   }
 }
 
-export function isSharedStateUrlTooLong(
-  pathname: string,
-  state: SharedStudioState,
-): boolean {
-  return `${pathname}?state=${encodeSharedState(state)}`.length > MAX_SHARE_URL_LENGTH;
+export function decodeSharedState(
+  searchParams: SearchParamReader,
+): SharedStudioState | null {
+  return decodeSharedStateValue(searchParams.get("state"));
+}
+
+export function isSharedStateUrlTooLong(state: SharedStudioState): boolean {
+  return `${"/"}?state=${encodeSharedState(state)}`.length > MAX_SHARE_URL_LENGTH;
 }
 
 export function buildSharedStateUrl(
   pathname: string,
   state: SharedStudioState,
 ): string | null {
-  if (isSharedStateUrlTooLong(pathname, state)) {
+  const url = `${pathname}?state=${encodeSharedState(state)}`;
+
+  if (url.length > MAX_SHARE_URL_LENGTH) {
     return null;
   }
 
-  return `${pathname}?state=${encodeSharedState(state)}`;
+  return url;
 }

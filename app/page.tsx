@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
 import { MillWorkspace } from "@/components/MillWorkspace";
-import { SeoIntroBar } from "@/components/SeoIntroBar";
 
 import { decodeSharedStateValue } from "@/lib/shareState";
 
@@ -29,21 +28,15 @@ async function StudioPage({ searchParams }: HomeProps) {
     getSearchParamValue(resolvedSearchParams?.state),
   );
 
-  return (
-    <>
-      <SeoIntroBar />
-      <MillWorkspace initialSharedState={initialSharedState} />
-    </>
-  );
+  return <MillWorkspace initialSharedState={initialSharedState} />;
 }
 
 function StudioFallback() {
   return (
-    <main
-      className="mx-auto max-w-5xl flex-1 px-4 py-12 sm:px-6"
-      id="main-content"
-    >
-      <p className="text-sm text-[color:var(--muted)]">Preparing workspace…</p>
+    <main className="mx-auto min-h-[12rem] max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <section className="panel-surface p-6">
+        <p className="text-sm text-[color:var(--muted)]">Preparing the workspace…</p>
+      </section>
     </main>
   );
 }

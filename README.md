@@ -47,8 +47,8 @@ npm run dev
 
 Open the URL shown in the terminal (usually `http://localhost:3000`).
 
-- **`npm install`** runs **`postinstall`** → `scripts/prepare-engine.mjs` → copies Miller from **`ENGINE_BINARY_PATH`**, from **`mlr` on your PATH**, or from a single file in `bin/`.
-- If the engine is missing, install [Miller](https://miller.readthedocs.io/) (`apt install miller` on Debian/Ubuntu) or set **`ENGINE_BINARY_PATH`**, then run `npm install` again.
+- **`npm install`** runs **`postinstall`** → `scripts/prepare-engine.mjs` → prepares **`bin/transform-engine`** (Miller).
+- If the engine is missing, set **`ENGINE_BINARY_PATH`** to your Miller-compatible binary, then run `npm install` again (see [Configuration](#configuration)).
 
 **Production-style run:**
 
@@ -114,7 +114,7 @@ Key PRD-aligned limits (see code for exact enforcement):
 | `lib/validation.ts` | Shared limits and **PRD validation copy** |
 | `lib/commandPolicy.ts` | Workspace policy before spawn |
 | `lib/operations.ts` | Curated **23** operations |
-| `lib/apiRateLimit.ts` | Per-IP sliding window |
+| `lib/apiRateLimit.ts` | Per session+IP sliding window (`buildRateLimitKey`) |
 | `lib/runResponseCache.ts` | SHA-256 keyed LRU cache |
 | `scripts/prepare-engine.mjs` | Prepares `bin/transform-engine` after install |
 

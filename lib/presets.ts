@@ -90,45 +90,6 @@ Sales,110,116,123
     outputFormat: "csv",
   },
   {
-    id: "ndjson-filter",
-    label: "Filter NDJSON log lines",
-    description: "Keep JSON Lines events above a status code threshold.",
-    input: `{"level":"info","status":200,"path":"/api/health"}
-{"level":"warn","status":404,"path":"/missing"}
-{"level":"error","status":500,"path":"/api/run"}
-{"level":"info","status":201,"path":"/api/run"}
-`,
-    command: "filter '$status >= 400'",
-    inputFormat: "ndjson",
-    outputFormat: "ndjson",
-  },
-  {
-    id: "tsv-sort",
-    label: "Sort TSV by column",
-    description: "Sort tab-separated values by a numeric score column.",
-    input: `name\tscore
-alpha\t12
-beta\t31
-gamma\t18
-`,
-    command: "sort -nr score",
-    inputFormat: "tsv",
-    outputFormat: "tsv",
-  },
-  {
-    id: "json-cut",
-    label: "JSON array — select fields",
-    description: "Trim an array of objects to specific keys.",
-    input: `[
-  {"id": 1, "name": "Alice", "role": "admin", "active": true},
-  {"id": 2, "name": "Bob", "role": "user", "active": false}
-]
-`,
-    command: "cut -f name,role",
-    inputFormat: "json",
-    outputFormat: "json",
-  },
-  {
     id: "uniq-deduplicate",
     label: "Deduplicate rows",
     description: "Collapses repeated records down to a single row by email.",
@@ -142,6 +103,42 @@ bob@example.com,Marketing,true
     command: "uniq -f email",
     inputFormat: "csv",
     outputFormat: "csv",
+  },
+  {
+    id: "ndjson-filter",
+    label: "Filter NDJSON log lines",
+    description: "Keeps NDJSON events whose status code is 500 or higher.",
+    input: `{"ts":"2026-05-01T10:00:00Z","service":"api","status":200}
+{"ts":"2026-05-01T10:00:01Z","service":"api","status":503}
+{"ts":"2026-05-01T10:00:02Z","service":"worker","status":200}
+{"ts":"2026-05-01T10:00:03Z","service":"api","status":500}
+`,
+    command: "filter '$status >= 500'",
+    inputFormat: "ndjson",
+    outputFormat: "ndjson",
+  },
+  {
+    id: "tsv-to-csv",
+    label: "TSV to CSV conversion",
+    description: "Loads tab-separated values and outputs comma-separated rows.",
+    input: `sku\tqty\twarehouse
+A-100\t12\twest
+B-220\t4\teast
+C-330\t9\twest
+`,
+    command: "cat",
+    inputFormat: "tsv",
+    outputFormat: "csv",
+  },
+  {
+    id: "json-array-extract",
+    label: "Extract fields from JSON array",
+    description: "Selects name and score columns from a JSON array of objects.",
+    input: `[{"name":"Alice","score":91},{"name":"Bob","score":88},{"name":"Carol","score":94}]
+`,
+    command: "cut -f name,score",
+    inputFormat: "json",
+    outputFormat: "json",
   },
 ];
 

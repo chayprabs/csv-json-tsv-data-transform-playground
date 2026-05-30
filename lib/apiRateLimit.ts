@@ -3,6 +3,11 @@ const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 30;
 
+export function buildRateLimitKey(ip: string, sessionId: string | null): string {
+  const normalizedSession = sessionId?.trim() || "anonymous";
+  return `${ip}:${normalizedSession}`;
+}
+
 export function checkRateLimit(rateLimitKey: string): {
   allowed: boolean;
   retryAfter: number;
@@ -24,11 +29,6 @@ export function checkRateLimit(rateLimitKey: string): {
 
   record.count += 1;
   return { allowed: true, retryAfter: 0 };
-}
-
-export function buildRateLimitKey(ip: string, sessionId: string | null): string {
-  const session = sessionId?.trim() || "anonymous";
-  return `${ip}:${session}`;
 }
 
 export function pruneStaleRateLimitEntries() {

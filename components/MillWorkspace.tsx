@@ -15,12 +15,15 @@ import { useRouter } from "next/navigation";
 import { CommandBar } from "@/components/CommandBar";
 import { InputPanel } from "@/components/InputPanel";
 import { OutputPanel } from "@/components/OutputPanel";
-import { readAutoRunPreference, writeAutoRunPreference } from "@/lib/autoRunPreference";
+import {
+  readAutoRunPreference,
+  writeAutoRunPreference,
+} from "@/lib/autoRunPreference";
 import { deriveEmptyOutputFallback } from "@/lib/emptyOutput";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getOutputFormatById } from "@/lib/formats";
 import { getClientSessionId } from "@/lib/clientSession";
-import type { OperationDefinition } from "@/lib/operations";
+import type { OutputViewMode } from "@/lib/outputDisplay";
 import { EXAMPLE_PRESETS } from "@/lib/presets";
 import { countRowsForFormat } from "@/lib/runMetrics";
 import { runTransform } from "@/lib/runTransform";
@@ -34,11 +37,7 @@ import {
   createInitialStudioState,
   studioReducer,
 } from "@/lib/studioState";
-import {
-  MAX_INPUT_BYTES,
-  getInputSizeInBytes,
-  validateRunRequest,
-} from "@/lib/validation";
+import { validateRunRequest } from "@/lib/validation";
 
 const OperationsReference = dynamic(
   () =>
@@ -47,9 +46,10 @@ const OperationsReference = dynamic(
     ),
   {
     loading: () => (
-      <section className="panel-surface p-5">
-        <p className="text-sm text-[color:var(--muted)]">Loading operations…</p>
-      </section>
+      <aside className="panel-surface p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Operations</h2>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">Loading…</p>
+      </aside>
     ),
   },
 );
@@ -71,12 +71,13 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   const commandInputRef = useRef<HTMLTextAreaElement>(null);
   const commandSelectionRef = useRef({ start: 0, end: 0 });
   const [linkCopied, setLinkCopied] = useState(false);
-  const [autoRun, setAutoRun] = useState(false);
-  const [prettyPrint, setPrettyPrint] = useState(true);
-  const [tableView, setTableView] = useState(false);
+  const [linkTooLong, setLinkTooLong] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [autoRunEnabled, setAutoRunEnabled] = useState(false);
+  const [outputViewMode, setOutputViewMode] = useState<OutputViewMode>("auto");
 
   useEffect(() => {
-    setAutoRun(readAutoRunPreference());
+    setAutoRunEnabled(readAutoRunPreference());
   }, []);
 
   useEffect(() => {
@@ -98,8 +99,13 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
   }, []);
 
   const isRunning = state.execution.status === "running";
-  const inputOversize = getInputSizeInBytes(state.input) > MAX_INPUT_BYTES;
-  const runDisabled = isRunning || inputOversize;
+
+  const selectedPreset = useMemo(
+    () =>
+      EXAMPLE_PRESETS.find((preset) => preset.id === state.selectedPresetId) ??
+      null,
+    [state.selectedPresetId],
+  );
 
   const shareableState = useMemo<SharedStudioState>(
     () => ({
@@ -111,10 +117,9 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     [state.command, state.input, state.inputFormat, state.outputFormat],
   );
 
-  const shareUrlTooLong = useMemo(
-    () => isSharedStateUrlTooLong("/", shareableState),
-    [shareableState],
-  );
+  useEffect(() => {
+    setLinkTooLong(isSharedStateUrlTooLong(shareableState));
+  }, [shareableState]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -122,6 +127,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
       if (!nextUrl) {
         return;
       }
+
       const currentUrl = `${window.location.pathname}${window.location.search}`;
       if (currentUrl !== nextUrl) {
         router.replace(nextUrl, { scroll: false });
@@ -139,6 +145,112 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     return sessionIdRef.current;
   }, []);
 
+  const handlePresetChange = useCallback((presetId: string) => {
+    if (presetId === CUSTOM_PRESET_ID) {
+      dispatch({ type: "selectCustomWorkspace" });
+      return;
+    }
+
+    const preset = EXAMPLE_PRESETS.find((candidate) => candidate.id === presetId);
+
+    if (!preset) {
+      return;
+    }
+
+    setUploadedFileName(null);
+    dispatch({
+      type: "applyPreset",
+      payload: preset,
+    });
+  }, []);
+
+  const handleLoadExample = useCallback(() => {
+    setUploadedFileName(null);
+    dispatch({ type: "loadExampleDataset" });
+  }, []);
+
+  const handleFileUpload = useCallback(
+    ({ text, fileName }: { text: string; fileName: string }) => {
+      setUploadedFileName(fileName);
+      dispatch({
+        type: "updateInput",
+        payload: text,
+      });
+    },
+    [],
+  );
+
+  const captureCommandSelection = useCallback(() => {
+    const el = commandInputRef.current;
+    if (el && typeof el.selectionStart === "number") {
+      commandSelectionRef.current = {
+        start: el.selectionStart,
+        end: el.selectionEnd ?? el.selectionStart,
+      };
+    }
+  }, []);
+
+  const handleOperationInsert = useCallback((insertText: string) => {
+    const el = commandInputRef.current;
+    let start = commandSelectionRef.current.start;
+    let end = commandSelectionRef.current.end;
+    if (
+      document.activeElement === el &&
+      el &&
+      typeof el.selectionStart === "number"
+    ) {
+      start = el.selectionStart;
+      end = el.selectionEnd ?? el.selectionStart;
+    }
+
+    dispatch({
+      type: "insertOperation",
+      payload: { text: insertText, start, end },
+    });
+
+    queueMicrotask(() => {
+      el?.focus();
+      const pos = start + insertText.length;
+      el?.setSelectionRange(pos, pos);
+      commandSelectionRef.current = { start: pos, end: pos };
+    });
+  }, []);
+
+  const handleInputChange = useCallback((nextInput: string) => {
+    setUploadedFileName(null);
+    dispatch({
+      type: "updateInput",
+      payload: nextInput,
+    });
+  }, []);
+
+  const handleCommandChange = useCallback((nextCommand: string) => {
+    dispatch({
+      type: "updateCommand",
+      payload: nextCommand,
+    });
+  }, []);
+
+  const handleInputFormatChange = useCallback(
+    (nextFormat: SharedStudioState["inputFormat"]) => {
+      dispatch({
+        type: "updateInputFormat",
+        payload: nextFormat,
+      });
+    },
+    [],
+  );
+
+  const handleOutputFormatChange = useCallback(
+    (nextFormat: SharedStudioState["outputFormat"]) => {
+      dispatch({
+        type: "updateOutputFormat",
+        payload: nextFormat,
+      });
+    },
+    [],
+  );
+
   const handleRun = useCallback(async () => {
     const validationError = validateRunRequest({
       input: shareableState.input,
@@ -148,7 +260,9 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     if (validationError) {
       dispatch({
         type: "runFailure",
-        payload: { errorMessage: validationError.message },
+        payload: {
+          errorMessage: validationError.message,
+        },
       });
       return;
     }
@@ -180,12 +294,15 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
       if (result.error) {
         dispatch({
           type: "runFailure",
-          payload: { errorMessage: result.error },
+          payload: {
+            errorMessage: result.error,
+          },
         });
         return;
       }
 
       const durationMs = Math.round(performance.now() - startedAt);
+
       const inputRows =
         result.inputRowCount ??
         countRowsForFormat(shareableState.input, shareableState.inputFormat);
@@ -206,7 +323,11 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         type: "runSuccess",
         payload: {
           output: displayOutput,
-          runSummary: { inputRows, outputRows, durationMs },
+          runSummary: {
+            inputRows,
+            outputRows,
+            durationMs,
+          },
         },
       });
 
@@ -218,10 +339,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         }
       }
     } catch (error) {
-      if (
-        requestController.signal.aborted ||
-        requestId !== latestRequestIdRef.current
-      ) {
+      if (requestController.signal.aborted || requestId !== latestRequestIdRef.current) {
         return;
       }
 
@@ -241,21 +359,37 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     }
   }, [getSessionId, router, shareableState]);
 
+  const handleCancel = useCallback(() => {
+    activeRequestControllerRef.current?.abort();
+    activeRequestControllerRef.current = null;
+    latestRequestIdRef.current += 1;
+    dispatch({ type: "cancelRun" });
+  }, []);
+
+  const handleClearOutput = useCallback(() => {
+    dispatch({ type: "clearOutput" });
+  }, []);
+
   useEffect(() => {
-    if (!autoRun || runDisabled) {
+    if (!autoRunEnabled || isRunning) {
       return undefined;
     }
 
-    if (!shareableState.input.trim() || !shareableState.command.trim()) {
+    const validationError = validateRunRequest({
+      input: shareableState.input,
+      command: shareableState.command,
+    });
+
+    if (validationError) {
       return undefined;
     }
 
     const timer = window.setTimeout(() => {
       void handleRun();
-    }, 900);
+    }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [autoRun, handleRun, runDisabled, shareableState]);
+  }, [autoRunEnabled, handleRun, isRunning, shareableState]);
 
   useEffect(() => {
     const handleGlobalShortcut = (event: KeyboardEvent) => {
@@ -263,11 +397,7 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
         return;
       }
 
-      if (event.shiftKey) {
-        return;
-      }
-
-      if (runDisabled) {
+      if (isRunning) {
         event.preventDefault();
         return;
       }
@@ -281,38 +411,37 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
     return () => {
       window.removeEventListener("keydown", handleGlobalShortcut);
     };
-  }, [handleRun, runDisabled]);
+  }, [handleRun, isRunning]);
 
-  const handlePresetChange = useCallback((presetId: string) => {
-    if (presetId === CUSTOM_PRESET_ID) {
-      dispatch({ type: "selectCustomWorkspace" });
-      return;
-    }
+  const handleCommandKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "ArrowUp" && !event.shiftKey && !event.metaKey) {
+        event.preventDefault();
+        dispatch({ type: "historyUp" });
+        return;
+      }
 
-    const preset = EXAMPLE_PRESETS.find((candidate) => candidate.id === presetId);
-
-    if (preset) {
-      dispatch({ type: "applyPreset", payload: preset });
-    }
-  }, []);
+      if (event.key === "ArrowDown" && !event.shiftKey && !event.metaKey) {
+        event.preventDefault();
+        dispatch({ type: "historyDown" });
+      }
+    },
+    [],
+  );
 
   const handleCopyWorkspaceLink = useCallback(async () => {
-    if (shareUrlTooLong) {
-      dispatch({
-        type: "runFailure",
-        payload: {
-          errorMessage:
-            "Workspace is too large to share in the URL. Save your data locally.",
-        },
-      });
+    if (linkTooLong) {
       return;
     }
 
     try {
-      const path = buildSharedStateUrl("/", shareableState);
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is not available in this browser.");
+      }
 
+      const path = buildSharedStateUrl("/", shareableState);
       if (!path) {
-        throw new Error("Unable to build a shareable link.");
+        return;
       }
 
       const fullUrl =
@@ -322,219 +451,161 @@ export function MillWorkspace({ initialSharedState }: MillWorkspaceProps) {
 
       await navigator.clipboard.writeText(fullUrl);
       setLinkCopied(true);
+      window.setTimeout(() => {
+        setLinkCopied(false);
+      }, 2000);
+    } catch {
+      setLinkCopied(false);
+    }
+  }, [linkTooLong, shareableState]);
+
+  const handleCopy = useCallback(async () => {
+    if (!state.execution.output) {
+      return;
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is not available in this browser.");
+      }
+
+      await navigator.clipboard.writeText(state.execution.output);
       dispatch({
         type: "setCopyStatus",
         payload: "copied",
       });
-      window.setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      setLinkCopied(false);
       dispatch({
-        type: "runFailure",
-        payload: { errorMessage: "Could not copy link to the clipboard." },
+        type: "setCopyStatus",
+        payload: "failed",
       });
     }
-  }, [shareUrlTooLong, shareableState]);
+  }, [state.execution.output]);
 
-  const handleOperationInsert = useCallback((operation: OperationDefinition) => {
-    const el = commandInputRef.current;
-    let start = commandSelectionRef.current.start;
-    let end = commandSelectionRef.current.end;
-
-    if (
-      document.activeElement === el &&
-      el &&
-      typeof el.selectionStart === "number"
-    ) {
-      start = el.selectionStart;
-      end = el.selectionEnd ?? el.selectionStart;
+  const handleDownload = useCallback(() => {
+    if (!state.execution.output) {
+      return;
     }
 
-    dispatch({
-      type: "insertOperation",
-      payload: { text: operation.insertText, start, end },
-    });
-
-    queueMicrotask(() => {
-      el?.focus();
-      const pos = start + operation.insertText.length;
-      el?.setSelectionRange(pos, pos);
-      commandSelectionRef.current = { start: pos, end: pos };
-    });
-  }, []);
-
-  const captureCommandSelection = useCallback(() => {
-    const el = commandInputRef.current;
-    if (el && typeof el.selectionStart === "number") {
-      commandSelectionRef.current = {
-        start: el.selectionStart,
-        end: el.selectionEnd ?? el.selectionStart,
-      };
-    }
-  }, []);
-
-  const handleCommandKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === "ArrowUp" && !event.shiftKey) {
-        event.preventDefault();
-        dispatch({ type: "historyUp" });
-        return;
-      }
-
-      if (event.key === "ArrowDown" && !event.shiftKey) {
-        event.preventDefault();
-        dispatch({ type: "historyDown" });
-      }
-    },
-    [],
-  );
+    const format = getOutputFormatById(state.outputFormat);
+    const blob = new Blob([state.execution.output], { type: format.mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `output.${format.extension}`;
+    anchor.click();
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0);
+  }, [state.execution.output, state.outputFormat]);
 
   const handleAutoRunChange = useCallback((enabled: boolean) => {
-    setAutoRun(enabled);
+    setAutoRunEnabled(enabled);
     writeAutoRunPreference(enabled);
   }, []);
 
   return (
     <main
-      className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8"
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6"
       id="main-content"
     >
-      {shareUrlTooLong ? (
-        <p
-          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          role="status"
-        >
-          This workspace is too large to save in the URL. Copy your data locally
-          before leaving the page.
-        </p>
-      ) : null}
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-50"
+            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-50"
             type="button"
             onClick={() => void handleCopyWorkspaceLink()}
-            disabled={runDisabled || shareUrlTooLong}
+            disabled={isRunning || linkTooLong}
           >
-            {linkCopied ? "Link copied" : "Copy link"}
+            {linkCopied ? "Copied link" : "Copy link"}
           </button>
-          <button
-            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)]"
-            type="button"
-            onClick={() => dispatch({ type: "toggleReference" })}
-            disabled={isRunning}
-            aria-expanded={state.isReferenceOpen}
-          >
-            {state.isReferenceOpen ? "Hide commands" : "Miller commands"}
-          </button>
+          {linkTooLong ? (
+            <p className="text-xs text-amber-800">
+              Workspace is too large to share in the URL. Copy input and command
+              manually.
+            </p>
+          ) : null}
         </div>
-        <select
-          className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
-          value={state.selectedPresetId}
-          onChange={(event) => handlePresetChange(event.target.value)}
-          disabled={runDisabled}
-          aria-label="Example preset"
-        >
-          <option value={CUSTOM_PRESET_ID}>Custom workspace</option>
-          {EXAMPLE_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
+
+        <div className="w-full sm:max-w-[16rem]">
+          <label
+            className="block text-sm font-medium text-[color:var(--foreground)]"
+            htmlFor="preset-select"
+          >
+            Preset
+          </label>
+          <select
+            id="preset-select"
+            className="mt-1.5 w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm text-[color:var(--foreground)] outline-none"
+            value={state.selectedPresetId}
+            onChange={(event) => handlePresetChange(event.target.value)}
+            disabled={isRunning}
+          >
+            <option value={CUSTOM_PRESET_ID}>Custom</option>
+            {EXAMPLE_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-[color:var(--muted)]">
+            {selectedPreset?.description ?? "Your own input and command."}
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-5">
-        <InputPanel
-          input={state.input}
-          inputFormat={state.inputFormat}
-          disabled={runDisabled}
-          onInputChange={(value) =>
-            dispatch({ type: "updateInput", payload: value })
-          }
-          onInputFormatChange={(format) =>
-            dispatch({ type: "updateInputFormat", payload: format })
-          }
-          onLoadExample={() => dispatch({ type: "loadExampleDataset" })}
-          onClear={() => dispatch({ type: "updateInput", payload: "" })}
-        />
-
-        <CommandBar
-          command={state.command}
-          outputFormat={state.outputFormat}
-          commandInputRef={commandInputRef}
-          disabled={runDisabled}
-          isRunning={isRunning}
-          autoRun={autoRun}
-          onAutoRunChange={handleAutoRunChange}
-          onCommandChange={(value) =>
-            dispatch({ type: "updateCommand", payload: value })
-          }
-          onCommandKeyDown={handleCommandKeyDown}
-          onCaptureCommandSelection={captureCommandSelection}
-          onOutputFormatChange={(format) =>
-            dispatch({ type: "updateOutputFormat", payload: format })
-          }
-          onRun={() => void handleRun()}
-          onCancel={() => {
-            activeRequestControllerRef.current?.abort();
-            activeRequestControllerRef.current = null;
-            dispatch({ type: "cancelRun" });
-          }}
-        />
-
-        {state.isReferenceOpen ? (
-          <OperationsReference
-            disabled={runDisabled}
-            isOpen={state.isReferenceOpen}
-            onToggle={() => dispatch({ type: "toggleReference" })}
-            onInsertOperation={handleOperationInsert}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="space-y-5">
+          <InputPanel
+            input={state.input}
+            inputFormat={state.inputFormat}
+            uploadedFileName={uploadedFileName}
+            disabled={isRunning}
+            onInputChange={handleInputChange}
+            onInputFormatChange={handleInputFormatChange}
+            onLoadExample={handleLoadExample}
+            onFileUpload={handleFileUpload}
           />
-        ) : null}
 
-        <OutputPanel
-          output={state.execution.output}
-          error={state.execution.errorMessage}
-          executionStatus={state.execution.status}
-          outputFormat={state.outputFormat}
-          runSummary={state.execution.runSummary}
-          copyStatus={state.copyStatus}
-          statusMessage={state.statusMessage}
-          prettyPrint={prettyPrint}
-          tableView={tableView}
-          onPrettyPrintChange={setPrettyPrint}
-          onTableViewChange={setTableView}
-          onCopy={async () => {
-            if (!state.execution.output) {
-              return;
-            }
+          <CommandBar
+            command={state.command}
+            outputFormat={state.outputFormat}
+            commandInputRef={commandInputRef}
+            disabled={isRunning}
+            isRunning={isRunning}
+            autoRunEnabled={autoRunEnabled}
+            onAutoRunChange={handleAutoRunChange}
+            onCommandChange={handleCommandChange}
+            onCommandKeyDown={handleCommandKeyDown}
+            onCaptureCommandSelection={captureCommandSelection}
+            onOutputFormatChange={handleOutputFormatChange}
+            onRun={() => void handleRun()}
+            onCancel={handleCancel}
+            onClear={handleClearOutput}
+          />
 
-            try {
-              await navigator.clipboard.writeText(state.execution.output);
-              dispatch({ type: "setCopyStatus", payload: "copied" });
-            } catch {
-              dispatch({ type: "setCopyStatus", payload: "failed" });
-            }
-          }}
-          onDownload={() => {
-            if (!state.execution.output) {
-              return;
-            }
+          <OutputPanel
+            output={state.execution.output}
+            error={state.execution.errorMessage}
+            executionStatus={state.execution.status}
+            outputFormat={state.outputFormat}
+            outputViewMode={outputViewMode}
+            runSummary={state.execution.runSummary}
+            copyStatus={state.copyStatus}
+            statusMessage={state.statusMessage}
+            onCopy={() => void handleCopy()}
+            onDownload={handleDownload}
+            onRunAgain={() => void handleRun()}
+            onOutputViewModeChange={setOutputViewMode}
+          />
+        </section>
 
-            const format = getOutputFormatById(state.outputFormat);
-            const blob = new Blob([state.execution.output], {
-              type: format.mimeType,
-            });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = `output.${format.extension}`;
-            anchor.click();
-            window.setTimeout(() => URL.revokeObjectURL(url), 0);
-          }}
-          onClear={() => dispatch({ type: "clearOutput" })}
-          onRunAgain={() => void handleRun()}
+        <OperationsReference
+          disabled={isRunning}
+          isOpen={state.isReferenceOpen}
+          onToggle={() => dispatch({ type: "toggleReference" })}
+          onInsertOperation={(operation) =>
+            handleOperationInsert(operation.insertText)}
         />
       </div>
     </main>

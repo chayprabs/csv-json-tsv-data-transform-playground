@@ -348,9 +348,8 @@ export async function POST(request: NextRequest) {
     requestIp,
     request.headers.get("x-real-ip"),
   );
-  const rate = checkRateLimit(
-    buildRateLimitKey(clientIp, request.headers.get(CLIENT_SESSION_HEADER)),
-  );
+  const sessionId = request.headers.get(CLIENT_SESSION_HEADER);
+  const rate = checkRateLimit(buildRateLimitKey(clientIp, sessionId));
 
   if (!rate.allowed) {
     return createRunResponse({

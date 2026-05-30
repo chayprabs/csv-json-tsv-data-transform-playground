@@ -1,9 +1,5 @@
 import { chmod, copyFile, mkdir, readdir, rename, stat } from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import path from "node:path";
-
-const execFileAsync = promisify(execFile);
 
 const projectRoot = process.cwd();
 const binDir = path.join(projectRoot, "bin");
@@ -40,25 +36,6 @@ async function findFallbackBinary() {
   return path.join(binDir, files[0].name);
 }
 
-async function findMillerOnPath() {
-  const command = process.platform === "win32" ? "where" : "which";
-
-  try {
-    const { stdout } = await execFileAsync(command, ["mlr"], {
-      env: process.env,
-    });
-    const candidate = stdout.trim().split(/\r?\n/)[0];
-
-    if (candidate && (await exists(candidate))) {
-      return candidate;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 async function main() {
   await mkdir(binDir, { recursive: true });
 
@@ -83,20 +60,25 @@ async function main() {
     return;
   }
 
-  const pathMiller = await findMillerOnPath();
+  if (process.platform !== "win32") {
+    try {
+      const { stdout } = await execFileAsync("command", ["-v", "mlr"], {
+        env: process.env,
+      });
+      const mlrPath = stdout.trim();
 
-  if (pathMiller) {
-    await copyFile(pathMiller, enginePath);
-
-    if (process.platform !== "win32") {
-      await chmod(enginePath, 0o755);
+      if (mlrPath && (await exists(mlrPath))) {
+        await copyFile(mlrPath, enginePath);
+        await chmod(enginePath, 0o755);
+        writeMessage(
+          process.stdout,
+          `Copied Miller (mlr) from PATH to ${enginePath}.`,
+        );
+        return;
+      }
+    } catch {
+      // mlr not on PATH — continue to fallbacks
     }
-
-    writeMessage(
-      process.stdout,
-      `Copied Miller from PATH (${pathMiller}) to ${enginePath}.`,
-    );
-    return;
   }
 
   const fallbackBinary = await findFallbackBinary();
@@ -114,7 +96,7 @@ async function main() {
 
   writeMessage(
     process.stderr,
-    `No engine executable was found. Install Miller (mlr), set ENGINE_BINARY_PATH, or place a binary at ${enginePath}.`,
+    `No engine executable was found. Place a compatible binary at ${enginePath} or set ENGINE_BINARY_PATH before install.`,
   );
 }
 
