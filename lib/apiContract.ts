@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { DATA_FORMAT_IDS } from "@/lib/formats";
+import { DATA_FORMAT_IDS, OUTPUT_FORMAT_IDS } from "@/lib/formats";
 
-export const CLIENT_SESSION_HEADER = "x-gridcraft-session";
+export const CLIENT_SESSION_HEADER = "x-mill-session";
 
 export const RUN_RESPONSE_CODES = {
   ok: "OK",
@@ -25,7 +25,7 @@ export const runRequestSchema = z.object({
   input: z.string(),
   command: z.string(),
   inputFormat: z.enum(DATA_FORMAT_IDS),
-  outputFormat: z.enum(DATA_FORMAT_IDS),
+  outputFormat: z.enum(OUTPUT_FORMAT_IDS),
 });
 
 export const runResponseSchema = z.object({
@@ -44,6 +44,9 @@ export const runResponseSchema = z.object({
     RUN_RESPONSE_CODES.rateLimited,
     RUN_RESPONSE_CODES.unexpected,
   ]),
+  inputRowCount: z.number().int().nonnegative().optional(),
+  outputRowCount: z.number().int().nonnegative().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
 });
 
 export type RunRequest = z.infer<typeof runRequestSchema>;

@@ -1,4 +1,4 @@
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 
 export interface ExamplePreset {
   id: string;
@@ -7,7 +7,7 @@ export interface ExamplePreset {
   input: string;
   command: string;
   inputFormat: DataFormatId;
-  outputFormat: DataFormatId;
+  outputFormat: OutputFormatId;
 }
 
 export const SAMPLE_DATASET = `name,age,dept,salary,score
@@ -34,6 +34,15 @@ delta,7,6
 epsilon,5,9
 `,
     command: "filter '$value > $threshold'",
+    inputFormat: "csv",
+    outputFormat: "csv",
+  },
+  {
+    id: "sort-records",
+    label: "Sort records",
+    description: "Sort rows by a numeric column for quick inspection.",
+    input: SAMPLE_DATASET,
+    command: "sort -n age",
     inputFormat: "csv",
     outputFormat: "csv",
   },
@@ -94,6 +103,42 @@ bob@example.com,Marketing,true
     command: "uniq -f email",
     inputFormat: "csv",
     outputFormat: "csv",
+  },
+  {
+    id: "ndjson-filter",
+    label: "Filter NDJSON log lines",
+    description: "Keeps NDJSON events whose status code is 500 or higher.",
+    input: `{"ts":"2026-05-01T10:00:00Z","service":"api","status":200}
+{"ts":"2026-05-01T10:00:01Z","service":"api","status":503}
+{"ts":"2026-05-01T10:00:02Z","service":"worker","status":200}
+{"ts":"2026-05-01T10:00:03Z","service":"api","status":500}
+`,
+    command: "filter '$status >= 500'",
+    inputFormat: "ndjson",
+    outputFormat: "ndjson",
+  },
+  {
+    id: "tsv-to-csv",
+    label: "TSV to CSV conversion",
+    description: "Loads tab-separated values and outputs comma-separated rows.",
+    input: `sku\tqty\twarehouse
+A-100\t12\twest
+B-220\t4\teast
+C-330\t9\twest
+`,
+    command: "cat",
+    inputFormat: "tsv",
+    outputFormat: "csv",
+  },
+  {
+    id: "json-array-extract",
+    label: "Extract fields from JSON array",
+    description: "Selects name and score columns from a JSON array of objects.",
+    input: `[{"name":"Alice","score":91},{"name":"Bob","score":88},{"name":"Carol","score":94}]
+`,
+    command: "cut -f name,score",
+    inputFormat: "json",
+    outputFormat: "json",
   },
 ];
 

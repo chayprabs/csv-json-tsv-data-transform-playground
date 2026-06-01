@@ -1,4 +1,4 @@
-const SESSION_STORAGE_KEY = "gridcraft-session-id";
+const SESSION_STORAGE_KEY = "mill-session-id";
 
 function createSessionId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

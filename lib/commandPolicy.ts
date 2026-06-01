@@ -1,3 +1,5 @@
+import { POLICY_BLOCKED_MESSAGE } from "@/lib/millConstants";
+
 const UNSUPPORTED_OPERATION_REASONS: Record<string, string> = {
   join:
     "This operation requires additional server-side files, which this workspace does not expose.",
@@ -6,6 +8,8 @@ const UNSUPPORTED_OPERATION_REASONS: Record<string, string> = {
   tee: "This operation writes side-output files or pipes, which this workspace does not allow.",
   template:
     "This operation requires a server-side template file, which this workspace does not expose.",
+  seqnum:
+    "This operation relies on external sequence state, which this workspace does not expose.",
 };
 
 const BLOCKED_DSL_FUNCTIONS = ["exec", "stat", "system"] as const;
@@ -104,38 +108,79 @@ function splitCommandSegments(parsedArgs: string[]): string[][] {
   return segments;
 }
 
+function tokenLooksLikeFilePath(token: string): boolean {
+  if (
+    token === "~" ||
+    token.startsWith("~/") ||
+    token.startsWith("./") ||
+    token.includes("../")
+  ) {
+    return true;
+  }
+
+  if (/^[A-Za-z]:\\/.test(token)) {
+    return true;
+  }
+
+  if (token.startsWith("/") && token.length > 1) {
+    return true;
+  }
+
+  if (token.includes("/") || token.includes("\\")) {
+    return true;
+  }
+
+  return false;
+}
+
+function segmentUsesTeeVerb(segment: string[]): boolean {
+  return segment.some((token) => token.toLowerCase() === "tee");
+}
+
 export function getUnsupportedOperationReason(operation: string): string | null {
   return UNSUPPORTED_OPERATION_REASONS[operation] ?? null;
 }
 
 export function getCommandPolicyViolation(
   parsedArgs: string[],
+  rawCommand: string,
 ): string | null {
+  void rawCommand;
+
   for (const token of parsedArgs) {
+    if (token === "--from") {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
+    if (tokenLooksLikeFilePath(token)) {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
     const blockedFunctionName = findBlockedDslFunction(token);
 
     if (blockedFunctionName) {
-      return `This workspace blocks DSL functions that can access the host system, such as system(), exec(), and stat().`;
+      return POLICY_BLOCKED_MESSAGE;
     }
   }
 
   const segments = splitCommandSegments(parsedArgs);
 
   for (const segment of segments) {
+    if (segmentUsesTeeVerb(segment)) {
+      return POLICY_BLOCKED_MESSAGE;
+    }
+
     const operation = segment[0];
 
     if (!operation) {
       continue;
     }
+
     const unsupportedOperationReason =
       getUnsupportedOperationReason(operation);
 
     if (unsupportedOperationReason) {
-      return unsupportedOperationReason;
-    }
-
-    if ((operation === "put" || operation === "filter") && segment.includes("-f")) {
-      return `${operation} -f is blocked because it loads DSL code from server-side files.`;
+      return POLICY_BLOCKED_MESSAGE;
     }
   }
 

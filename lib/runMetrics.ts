@@ -1,4 +1,4 @@
-import type { DataFormatId } from "@/lib/formats";
+import type { DataFormatId, OutputFormatId } from "@/lib/formats";
 const DOUBLE_QUOTE = '"';
 
 function getNonEmptyLines(value: string): string[] {
@@ -56,7 +56,7 @@ function countDelimitedRows(value: string): number {
 
 export function countRowsForFormat(
   value: string,
-  format: DataFormatId,
+  format: DataFormatId | OutputFormatId,
 ): number {
   if (!value.trim()) {
     return 0;

@@ -11,10 +11,28 @@ import {
   runRequestSchema,
   type RunResponseCode,
 } from "@/lib/apiContract";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  getClientIpFromRequest,
+} from "@/lib/apiRateLimit";
 import { normalizeCommandArgs } from "@/lib/commandCompatibility";
 import { getCommandPolicyViolation } from "@/lib/commandPolicy";
 import { sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getFormatById } from "@/lib/formats";
+import { getFormatById, getOutputFormatById } from "@/lib/formats";
+import {
+  ENGINE_UNAVAILABLE_MESSAGE,
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+  RATE_LIMIT_MESSAGE,
+  REQUEST_CANCELLED_MESSAGE,
+  TRANSFORMATION_TIMEOUT_MESSAGE,
+} from "@/lib/millConstants";
+import { countRowsForFormat } from "@/lib/runMetrics";
+import {
+  getCachedRunResult,
+  getRunResultCacheKey,
+  setCachedRunResult,
+} from "@/lib/runResponseCache";
 import { MAX_INPUT_BYTES, validateRunRequest } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -24,9 +42,7 @@ const ENGINE_NAME = process.platform === "win32"
   ? "transform-engine.exe"
   : "transform-engine";
 const MAX_EXECUTION_TIME_MS = 10_000;
-const SESSION_LOCK_TTL_MS = MAX_EXECUTION_TIME_MS + 5_000;
 const MAX_REQUEST_BODY_BYTES = MAX_INPUT_BYTES + 64 * 1024;
-const activeSessions = new Map<string, number>();
 
 class RequestBodyTooLargeError extends Error {
   constructor() {
@@ -36,6 +52,13 @@ class RequestBodyTooLargeError extends Error {
 }
 
 function getEngineBinaryPath() {
+  const configured = process.env.ENGINE_BINARY_PATH?.trim();
+  if (configured) {
+    return path.isAbsolute(configured)
+      ? configured
+      : path.join(process.cwd(), configured);
+  }
+
   return path.join(process.cwd(), "bin", ENGINE_NAME);
 }
 
@@ -44,25 +67,45 @@ function createRunResponse({
   code,
   error,
   output = "",
+  inputRowCount,
+  outputRowCount,
+  durationMs,
+  headers: extraHeaders,
 }: {
   status: number;
   code: RunResponseCode;
   error: string | null;
   output?: string;
+  inputRowCount?: number;
+  outputRowCount?: number;
+  durationMs?: number;
+  headers?: Record<string, string>;
 }) {
-  return NextResponse.json(
-    {
-      output,
-      error: error === null ? null : sanitizeErrorMessage(error),
-      code,
+  const body: Record<string, unknown> = {
+    output,
+    error: error === null ? null : sanitizeErrorMessage(error),
+    code,
+  };
+
+  if (inputRowCount !== undefined) {
+    body.inputRowCount = inputRowCount;
+  }
+
+  if (outputRowCount !== undefined) {
+    body.outputRowCount = outputRowCount;
+  }
+
+  if (durationMs !== undefined) {
+    body.durationMs = durationMs;
+  }
+
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      ...extraHeaders,
     },
-    {
-      status,
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    },
-  );
+  });
 }
 
 function tokenizeCommand(command: string) {
@@ -142,52 +185,6 @@ function tokenizeCommand(command: string) {
   }
 
   return tokens;
-}
-
-function purgeExpiredSessionLocks() {
-  const now = Date.now();
-
-  activeSessions.forEach((startedAt, sessionId) => {
-    if (now - startedAt > SESSION_LOCK_TTL_MS) {
-      activeSessions.delete(sessionId);
-    }
-  });
-}
-
-function sanitizeSessionId(sessionId: string | null) {
-  if (!sessionId) {
-    return null;
-  }
-
-  if (sessionId.length > 128 || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
-    return null;
-  }
-
-  return sessionId;
-}
-
-function tryAcquireSessionLock(sessionId: string | null) {
-  if (!sessionId) {
-    return true;
-  }
-
-  purgeExpiredSessionLocks();
-
-  if (activeSessions.has(sessionId)) {
-    return false;
-  }
-
-  activeSessions.set(sessionId, Date.now());
-
-  return true;
-}
-
-function releaseSessionLock(sessionId: string | null) {
-  if (!sessionId) {
-    return;
-  }
-
-  activeSessions.delete(sessionId);
 }
 
 async function ensureEngineIsAvailable() {
@@ -286,7 +283,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 413,
         code: RUN_RESPONSE_CODES.validation,
-        error: "Input is too large. The current limit is 10 MB.",
+        error: INPUT_EXCEEDS_LIMIT_MESSAGE,
       });
     }
 
@@ -337,7 +334,46 @@ export async function POST(request: NextRequest) {
     return createRunResponse({
       status: 413,
       code: RUN_RESPONSE_CODES.validation,
-      error: "Input is too large. The current limit is 10 MB.",
+      error: INPUT_EXCEEDS_LIMIT_MESSAGE,
+    });
+  }
+
+  const requestIp =
+    typeof (request as NextRequest & { ip?: string }).ip === "string"
+      ? (request as NextRequest & { ip?: string }).ip
+      : null;
+
+  const clientIp = getClientIpFromRequest(
+    request.headers.get("x-forwarded-for"),
+    requestIp,
+    request.headers.get("x-real-ip"),
+  );
+  const sessionId = request.headers.get(CLIENT_SESSION_HEADER);
+  const rate = checkRateLimit(buildRateLimitKey(clientIp, sessionId));
+
+  if (!rate.allowed) {
+    return createRunResponse({
+      status: 429,
+      code: RUN_RESPONSE_CODES.rateLimited,
+      error: RATE_LIMIT_MESSAGE,
+      headers: {
+        "Retry-After": String(rate.retryAfter),
+      },
+    });
+  }
+
+  const cacheKey = getRunResultCacheKey(payload);
+  const cached = getCachedRunResult(cacheKey);
+
+  if (cached) {
+    return createRunResponse({
+      status: 200,
+      code: RUN_RESPONSE_CODES.ok,
+      error: null,
+      output: cached.output,
+      inputRowCount: cached.inputRowCount,
+      outputRowCount: cached.outputRowCount,
+      durationMs: cached.durationMs,
     });
   }
 
@@ -364,26 +400,16 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const commandPolicyViolation = getCommandPolicyViolation(parsedArgs);
+  const commandPolicyViolation = getCommandPolicyViolation(
+    parsedArgs,
+    payload.command,
+  );
 
   if (commandPolicyViolation) {
     return createRunResponse({
-      status: 403,
+      status: 400,
       code: RUN_RESPONSE_CODES.policyViolation,
       error: commandPolicyViolation,
-    });
-  }
-
-  const sessionId = sanitizeSessionId(
-    request.headers.get(CLIENT_SESSION_HEADER),
-  );
-
-  if (!tryAcquireSessionLock(sessionId)) {
-    return createRunResponse({
-      status: 429,
-      code: RUN_RESPONSE_CODES.rateLimited,
-      error:
-        "Another transformation is already running for this workspace session. Wait for it to finish or cancel it first.",
     });
   }
 
@@ -394,15 +420,17 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 500,
         code: RUN_RESPONSE_CODES.engineUnavailable,
-        error: "The transformation engine is unavailable on the server.",
+        error: ENGINE_UNAVAILABLE_MESSAGE,
       });
     }
+
+    const startedAt = Date.now();
 
     const result = await execa(
       binaryPath,
       [
         getFormatById(payload.inputFormat).inputFlag,
-        getFormatById(payload.outputFormat).outputFlag,
+        getOutputFormatById(payload.outputFormat).outputFlag,
         ...parsedArgs,
       ],
       {
@@ -412,7 +440,15 @@ export async function POST(request: NextRequest) {
         stripFinalNewline: false,
         timeout: MAX_EXECUTION_TIME_MS,
         windowsHide: true,
+        env: {},
       },
+    );
+
+    const durationMs = Math.max(0, Date.now() - startedAt);
+    const inputRowCount = countRowsForFormat(payload.input, payload.inputFormat);
+    const outputRowCount = countRowsForFormat(
+      result.stdout,
+      payload.outputFormat,
     );
 
     if (result.exitCode !== 0) {
@@ -427,18 +463,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    setCachedRunResult(cacheKey, {
+      output: result.stdout,
+      inputRowCount,
+      outputRowCount,
+      durationMs,
+    });
+
     return createRunResponse({
       status: 200,
       code: RUN_RESPONSE_CODES.ok,
       error: null,
       output: result.stdout,
+      inputRowCount,
+      outputRowCount,
+      durationMs,
     });
   } catch (error) {
     if (request.signal.aborted) {
       return createRunResponse({
         status: 499,
         code: RUN_RESPONSE_CODES.unexpected,
-        error: "The request was cancelled before the transformation completed.",
+        error: REQUEST_CANCELLED_MESSAGE,
       });
     }
 
@@ -449,7 +495,7 @@ export async function POST(request: NextRequest) {
       return createRunResponse({
         status: 504,
         code: RUN_RESPONSE_CODES.timedOut,
-        error: "The transformation timed out after 10 seconds.",
+        error: TRANSFORMATION_TIMEOUT_MESSAGE,
       });
     }
 
@@ -458,7 +504,5 @@ export async function POST(request: NextRequest) {
       code: RUN_RESPONSE_CODES.unexpected,
       error: "Unexpected execution failure.",
     });
-  } finally {
-    releaseSessionLock(sessionId);
   }
 }

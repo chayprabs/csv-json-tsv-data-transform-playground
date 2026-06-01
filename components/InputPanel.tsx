@@ -1,39 +1,64 @@
-import { memo } from "react";
+import { memo, useRef } from "react";
 
+import {
+  INPUT_EXCEEDS_LIMIT_MESSAGE,
+} from "@/lib/millConstants";
 import {
   FORMAT_OPTIONS,
   isDataFormatId,
   type DataFormatId,
 } from "@/lib/formats";
-import { MAX_INPUT_BYTES, getInputSizeInBytes } from "@/lib/validation";
+import {
+  MAX_INPUT_BYTES,
+  getInputLargeSlowWarning,
+  getInputSizeInBytes,
+} from "@/lib/validation";
 
 interface InputPanelProps {
   input: string;
   inputFormat: DataFormatId;
+  uploadedFileName: string | null;
   disabled: boolean;
   onInputChange: (value: string) => void;
   onInputFormatChange: (value: DataFormatId) => void;
   onLoadExample: () => void;
+  onFileUpload: (payload: { text: string; fileName: string }) => void;
 }
 
 export const InputPanel = memo(function InputPanel({
   input,
   inputFormat,
+  uploadedFileName,
   disabled,
   onInputChange,
   onInputFormatChange,
   onLoadExample,
+  onFileUpload,
 }: InputPanelProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const inputSizeInBytes = getInputSizeInBytes(input);
   const isInputOversize = inputSizeInBytes > MAX_INPUT_BYTES;
+  const largeSlowWarning = getInputLargeSlowWarning(input);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const text = await file.text();
+    onFileUpload({ text, fileName: file.name });
+  };
 
   return (
-    <section className="panel-surface rounded-3xl p-5 sm:p-6">
+    <section className="panel-surface p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Input</h2>
+          <h2 className="text-base font-semibold">Input</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Paste raw data in one of the supported text formats.
+            CSV, TSV, JSON, NDJSON, or DKVP.
           </p>
           <p
             className="mt-2 text-sm text-[color:var(--muted)]"
@@ -41,10 +66,16 @@ export const InputPanel = memo(function InputPanel({
           >
             {input.length.toLocaleString()} characters |{" "}
             {inputSizeInBytes.toLocaleString()} bytes
+            {uploadedFileName ? ` | ${uploadedFileName}` : ""}
           </p>
+          {largeSlowWarning ? (
+            <p className="mt-2 text-sm font-medium text-amber-800">
+              {largeSlowWarning}
+            </p>
+          ) : null}
           {isInputOversize ? (
             <p className="mt-2 text-sm font-medium text-[color:var(--danger)]">
-              Input is over the 10 MB limit. Reduce the dataset before running.
+              {INPUT_EXCEEDS_LIMIT_MESSAGE}
             </p>
           ) : null}
         </div>
@@ -56,7 +87,7 @@ export const InputPanel = memo(function InputPanel({
             <span>Format</span>
             <select
               id="input-format"
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-0"
               value={inputFormat}
               onChange={(event) => {
                 if (isDataFormatId(event.target.value)) {
@@ -72,8 +103,24 @@ export const InputPanel = memo(function InputPanel({
               ))}
             </select>
           </label>
+          <input
+            ref={fileInputRef}
+            accept=".csv,.tsv,.json,.ndjson,.txt,.dkvp"
+            className="sr-only"
+            type="file"
+            onChange={(event) => void handleFileChange(event)}
+            disabled={disabled}
+          />
           <button
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+          >
+            Upload file
+          </button>
+          <button
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
             type="button"
             onClick={onLoadExample}
             disabled={disabled}
@@ -84,14 +131,14 @@ export const InputPanel = memo(function InputPanel({
       </div>
 
       <label
-        className="mt-4 block text-sm font-semibold text-[color:var(--foreground)]"
+        className="mt-4 block text-sm font-medium text-[color:var(--foreground)]"
         htmlFor="input-data"
       >
         Raw data
       </label>
       <textarea
         id="input-data"
-        className="mt-4 min-h-[21rem] w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 font-mono text-sm leading-6 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
+        className="mt-2 min-h-[18rem] w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2.5 font-mono text-sm leading-6 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
         spellCheck={false}
         value={input}
         onChange={(event) => onInputChange(event.target.value)}
@@ -99,8 +146,8 @@ export const InputPanel = memo(function InputPanel({
         disabled={disabled}
         aria-describedby="input-help input-stats"
       />
-      <p className="mt-2 text-sm text-[color:var(--muted)]" id="input-help">
-        Paste CSV, TSV, JSON, NDJSON, or DKVP data here.
+      <p className="sr-only" id="input-help">
+        Supported formats: CSV, TSV, JSON, NDJSON, DKVP.
       </p>
     </section>
   );

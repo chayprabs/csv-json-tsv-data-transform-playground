@@ -16,7 +16,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src ${scriptSource}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self'",
   "object-src 'none'",
@@ -35,9 +35,19 @@ const nextConfig = {
   experimental: {
     devtoolSegmentExplorer: false,
     browserDebugInfoInTerminal: false,
+    middlewareClientMaxBodySize: "15mb",
   },
   async headers() {
     return [
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

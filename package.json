@@ -1,40 +1,54 @@
 {
-  "name": "gridcraft-studio",
-  "version": "0.1.0",
+  "name": "mill",
+  "version": "1.0.0",
   "private": true,
-  "description": "A browser-based workspace for command-driven data transformation.",
-  "author": "Gridcraft Team",
+  "description": "Mill — browser-based Miller (mlr) workspace: CSV, TSV, JSON, NDJSON, DKVP transforms, URL sharing, Next.js.",
+  "author": "Mill contributors",
   "keywords": [
-    "data",
-    "transform",
+    "mill",
+    "miller",
+    "mlr",
     "csv",
+    "tsv",
     "json",
     "ndjson",
-    "nextjs"
+    "dkvp",
+    "data-transformation",
+    "data-wrangling",
+    "tabular-data",
+    "json-lines",
+    "etl",
+    "playground",
+    "nextjs",
+    "typescript",
+    "tailwindcss"
   ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "smoke": "node ./scripts/smoke-prd.mjs",
     "postinstall": "node ./scripts/prepare-engine.mjs"
   },
   "dependencies": {
-    "execa": "^9.6.0",
-    "next": "^15.5.14",
-    "react": "^18",
-    "react-dom": "^18",
-    "zod": "^4.3.6"
+    "execa": "9.6.0",
+    "lru-cache": "11.3.6",
+    "lz-string": "1.5.0",
+    "next": "15.5.18",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zod": "4.3.6"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.2.2",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "^15.5.14",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "@next/bundle-analyzer": "15.5.18",
+    "@types/node": "20.17.50",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "eslint": "8.57.1",
+    "eslint-config-next": "15.5.18",
+    "postcss": "8.5.10",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.8.3"
   }
 }

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Miller for engine smoke test
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y miller
+          cp "$(command -v mlr)" bin/transform-engine
+          chmod +x bin/transform-engine
+
+      - name: PRD API smoke tests
+        run: |
+          npm run start &
+          echo $! > .smoke-server.pid
+          npm run smoke
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+          SMOKE_WAIT_MS: "90000"
+          SMOKE_REQUIRE_ENGINE: "1"
+
+      - name: Stop smoke server
+        if: always()
+        run: |
+          if [ -f .smoke-server.pid ]; then
+            kill "$(cat .smoke-server.pid)" 2>/dev/null || true
+          fi

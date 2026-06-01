@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
 
+import { SeoIntroBar } from "@/components/SeoIntroBar";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gridcraft Studio",
+  title: "Mill — Miller (mlr) data transform playground",
   description:
-    "A data transformation workspace for command-driven format conversion and record shaping.",
+    "Paste CSV, TSV, JSON, NDJSON, or DKVP. Run Miller command chains in the browser workspace. Share state by URL.",
+  keywords: [
+    "mill",
+    "miller",
+    "mlr",
+    "csv",
+    "tsv",
+    "json",
+    "ndjson",
+    "data transformation",
+    "playground",
+  ],
 };
 
 export default function RootLayout({
@@ -15,14 +30,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="flex min-h-screen flex-col">
         <a
           className="skip-link"
           href="#main-content"
         >
           Skip to workspace
         </a>
-        {children}
+        <SiteHeader />
+        <SeoIntroBar />
+        <div className="flex flex-1 flex-col">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );

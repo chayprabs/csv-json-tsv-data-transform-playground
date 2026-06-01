@@ -16,16 +16,16 @@ export const OperationsReference = memo(function OperationsReference({
   onInsertOperation,
 }: OperationsReferenceProps) {
   return (
-    <aside className="panel-surface rounded-3xl p-5 sm:p-6">
+    <section className="panel-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Operations reference</h2>
+          <h2 className="text-base font-semibold">Miller commands</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Click any operation to drop its starter syntax into the command bar.
+            Click an operation to insert it into the command field.
           </p>
         </div>
         <button
-          className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm font-medium"
           type="button"
           onClick={onToggle}
           aria-expanded={isOpen}
@@ -38,52 +38,30 @@ export const OperationsReference = memo(function OperationsReference({
 
       {isOpen ? (
         <div
-          className="mt-4 max-h-[55rem] space-y-3 overflow-y-auto pr-1"
+          className="mt-4 grid max-h-[28rem] gap-2 overflow-y-auto sm:grid-cols-2"
           id="operations-reference-list"
         >
           {OPERATIONS.map((operation) => (
             <button
               key={operation.name}
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 text-left transition hover:border-[color:var(--accent)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-3 text-left transition hover:border-[color:var(--accent)] disabled:opacity-50"
               type="button"
               onClick={() => onInsertOperation(operation)}
-              disabled={disabled}
+              disabled={disabled || !operation.isSupported}
+              title={operation.supportNote ?? undefined}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-mono text-sm font-semibold text-[color:var(--foreground)]">
-                    {operation.name}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-                    {operation.description}
-                  </p>
-                  <p className="mt-3 font-mono text-xs leading-5 text-[color:var(--accent-strong)]">
-                    {operation.example}
-                  </p>
-                  {operation.supportNote ? (
-                    <p className="mt-3 text-xs leading-5 text-[color:var(--muted)]">
-                      Workspace note: {operation.supportNote}
-                    </p>
-                  ) : null}
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                    operation.isSupported
-                      ? "bg-[color:var(--background-accent)] text-[color:var(--accent-strong)]"
-                      : "border border-amber-300 bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  {operation.isSupported ? "Insert" : "Limited"}
-                </span>
-              </div>
+              <p className="font-mono text-sm font-semibold">{operation.name}</p>
+              <p className="mt-1 text-xs leading-5 text-[color:var(--muted)]">
+                {operation.description}
+              </p>
             </button>
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-sm text-[color:var(--muted)]">
-          {OPERATIONS.length} operations available.
+        <p className="mt-3 text-sm text-[color:var(--muted)]">
+          {OPERATIONS.length} curated Miller operations available.
         </p>
       )}
-    </aside>
+    </section>
   );
 });

@@ -60,6 +60,27 @@ async function main() {
     return;
   }
 
+  if (process.platform !== "win32") {
+    try {
+      const { stdout } = await execFileAsync("command", ["-v", "mlr"], {
+        env: process.env,
+      });
+      const mlrPath = stdout.trim();
+
+      if (mlrPath && (await exists(mlrPath))) {
+        await copyFile(mlrPath, enginePath);
+        await chmod(enginePath, 0o755);
+        writeMessage(
+          process.stdout,
+          `Copied Miller (mlr) from PATH to ${enginePath}.`,
+        );
+        return;
+      }
+    } catch {
+      // mlr not on PATH — continue to fallbacks
+    }
+  }
+
   const fallbackBinary = await findFallbackBinary();
 
   if (fallbackBinary && fallbackBinary !== enginePath) {
